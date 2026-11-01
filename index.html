@@ -1,0 +1,3481 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Koursa 3D: Tunisian Street | كـورسـة</title>
+    <meta name="description" content="3D arcade endless driving game set on the streets of Tunisia. Dodge potholes, pick up passengers, earn Koursa and Gold, rank up through driver syndicates, and tune your Taxi Jama3i van!" />
+    <meta property="og:title" content="Koursa 3D: Tunisian Street" />
+    <meta property="og:description" content="Endless 3D Tunisian Street Taxi Jama3i driving game. Pick up passengers for Koursa, dodge speed radars & potholes, and upgrade your van!" />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <!-- Google Fonts for crisp typography and Arabic flavor -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Changa:wght@400;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+    <!-- Three.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <style>
+      :root {
+        --color-tunisia-red: #d90429;
+        --color-taxi-yellow: #f59e0b;
+        --color-taxi-gold: #fbbf24;
+        --color-sidibou-blue: #0284c7;
+        --color-dark-bg: #0f172a;
+        --color-card-bg: rgba(15, 23, 42, 0.88);
+        --color-accent-green: #10b981;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      body, html {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background-color: #0b0f19;
+        font-family: 'Outfit', 'Changa', system-ui, -apple-system, sans-serif;
+        color: #ffffff;
+      }
+
+      #game-canvas-container {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 1;
+      }
+
+      canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+
+      /* ================= UI OVERLAYS ================= */
+      .ui-layer {
+        position: absolute;
+        inset: 0;
+        z-index: 10;
+        pointer-events: none;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .interactive {
+        pointer-events: auto;
+      }
+
+      /* TOP HUD */
+      #hud {
+        display: none;
+        justify-content: space-between;
+        align-items: flex-start;
+        padding: 16px 24px;
+        width: 100%;
+      }
+
+      .hud-card {
+        background: rgba(15, 23, 42, 0.85);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 14px;
+        padding: 10px 18px;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .hud-label {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 1px;
+        color: #94a3b8;
+        text-transform: uppercase;
+      }
+
+      .hud-value {
+        font-size: 22px;
+        font-weight: 800;
+        font-variant-numeric: tabular-nums;
+        color: #f8fafc;
+      }
+
+      .kiraa-val {
+        color: #38bdf8;
+      }
+
+      .gold-val {
+        color: #facc15;
+      }
+
+      .hud-icon {
+        font-size: 24px;
+        line-height: 1;
+      }
+
+      /* DRIVER LEVEL & RANK PILL */
+      .driver-rank-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: rgba(245, 158, 11, 0.15);
+        border: 1px solid rgba(245, 158, 11, 0.4);
+        border-radius: 20px;
+        padding: 6px 14px;
+        font-size: 13px;
+        font-weight: 800;
+        color: #fbbf24;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .driver-rank-badge:hover {
+        background: rgba(245, 158, 11, 0.3);
+        transform: translateY(-1px);
+      }
+
+      .rank-locked-tag {
+        background: #d90429;
+        color: white;
+        padding: 1px 7px;
+        border-radius: 10px;
+        font-size: 11px;
+        font-weight: 800;
+      }
+
+      /* SPEEDOMETER & BOTTOM DOCK */
+      #bottom-dock {
+        margin-top: auto;
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        padding-bottom: 24px;
+        gap: 12px;
+      }
+
+      .speedo-cluster {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        background: rgba(15, 23, 42, 0.85);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 40px;
+        padding: 8px 24px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+      }
+
+      .speedo-num {
+        font-size: 28px;
+        font-weight: 900;
+        color: #f59e0b;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .speedo-unit {
+        font-size: 12px;
+        color: #94a3b8;
+        font-weight: 700;
+      }
+
+      .shield-status {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        font-weight: 700;
+        background: rgba(34, 197, 94, 0.2);
+        color: #4ade80;
+        border: 1px solid rgba(74, 222, 128, 0.3);
+        padding: 4px 12px;
+        border-radius: 20px;
+      }
+
+      .shield-inactive {
+        background: rgba(148, 163, 184, 0.1);
+        color: #64748b;
+        border-color: rgba(148, 163, 184, 0.2);
+      }
+
+      /* TOUCH STEERING CONTROLS (for mobile or mouse tap) */
+      .touch-controls {
+        display: flex;
+        gap: 16px;
+        pointer-events: auto;
+      }
+
+      .touch-btn {
+        width: 58px;
+        height: 58px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.12);
+        border: 2px solid rgba(255, 255, 255, 0.25);
+        color: white;
+        font-size: 22px;
+        font-weight: bold;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: transform 0.1s, background 0.1s;
+      }
+
+      .touch-btn:active {
+        transform: scale(0.9);
+        background: rgba(245, 158, 11, 0.4);
+      }
+
+      .horn-btn {
+        background: rgba(217, 4, 41, 0.3);
+        border-color: rgba(217, 4, 41, 0.5);
+      }
+
+      /* FLOATING POPUP TEXT (Tunisian Street Dialogues) - Pinned to Top Perimeter to Keep Field of View 100% Clear */
+      #popup-toast-container {
+        position: absolute;
+        top: 76px;
+        left: 50%;
+        transform: translateX(-50%);
+        pointer-events: none;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        z-index: 60;
+        max-width: 90vw;
+      }
+
+      .popup-toast {
+        background: rgba(217, 4, 41, 0.9);
+        color: #fff;
+        padding: 6px 18px;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: 700;
+        font-family: 'Changa', 'Outfit', sans-serif;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.2);
+        letter-spacing: 0.3px;
+        animation: topToastFade 1.5s forwards cubic-bezier(0.16, 1, 0.3, 1);
+        text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+        white-space: nowrap;
+      }
+
+      @keyframes topToastFade {
+        0% { opacity: 0; transform: translateY(-8px) scale(0.92); }
+        15% { opacity: 1; transform: translateY(0px) scale(1); }
+        80% { opacity: 1; transform: translateY(0px); }
+        100% { opacity: 0; transform: translateY(-6px) scale(0.96); }
+      }
+
+      /* MENUS & MODALS */
+      .modal-screen {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: radial-gradient(circle at center, rgba(15, 23, 42, 0.75) 0%, rgba(3, 7, 18, 0.95) 100%);
+        z-index: 100;
+        padding: 20px;
+      }
+
+      .modal-box {
+        background: #0f172a;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 24px;
+        padding: 32px 36px;
+        max-width: 540px;
+        width: 100%;
+        text-align: center;
+        box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), 0 0 40px rgba(245, 158, 11, 0.15);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .modal-box::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 6px;
+        background: linear-gradient(90deg, #d90429, #f59e0b, #0284c7);
+      }
+
+      .game-title {
+        font-family: 'Changa', 'Outfit', sans-serif;
+        font-size: 38px;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: -0.5px;
+        color: #ffffff;
+        margin-bottom: 4px;
+        line-height: 1.1;
+      }
+
+      .game-title span {
+        color: #f59e0b;
+      }
+
+      .game-sub {
+        font-size: 15px;
+        font-weight: 600;
+        color: #94a3b8;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+      }
+
+      .tunisia-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        background: #d90429;
+        color: white;
+        padding: 2px 10px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .primary-btn {
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+        color: #0f172a;
+        border: none;
+        border-radius: 14px;
+        padding: 16px 32px;
+        font-size: 18px;
+        font-weight: 800;
+        cursor: pointer;
+        width: 100%;
+        box-shadow: 0 10px 25px rgba(245, 158, 11, 0.35);
+        transition: transform 0.15s, box-shadow 0.15s, filter 0.15s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+      }
+
+      .primary-btn:hover {
+        transform: translateY(-2px);
+        filter: brightness(1.1);
+        box-shadow: 0 14px 30px rgba(245, 158, 11, 0.45);
+      }
+
+      .secondary-btn {
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        color: #ffffff;
+        border-radius: 14px;
+        padding: 13px 24px;
+        font-size: 15px;
+        font-weight: 700;
+        cursor: pointer;
+        width: 100%;
+        margin-top: 10px;
+        transition: background 0.15s, transform 0.15s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+      }
+
+      .secondary-btn:hover {
+        background: rgba(255, 255, 255, 0.14);
+        transform: translateY(-1px);
+      }
+
+      .controls-guide {
+        margin-top: 20px;
+        padding-top: 16px;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        font-size: 13px;
+        color: #94a3b8;
+        display: flex;
+        justify-content: space-around;
+      }
+
+      .kbd {
+        background: rgba(255, 255, 255, 0.12);
+        padding: 2px 7px;
+        border-radius: 6px;
+        color: #f8fafc;
+        font-weight: 700;
+        font-size: 12px;
+      }
+
+      /* GARAGE / SHOP MODAL */
+      #shop-modal {
+        display: none;
+      }
+
+      .shop-box {
+        max-width: 760px;
+        width: 100%;
+        max-height: 90vh;
+        overflow-y: auto;
+        padding: 28px;
+        text-align: left;
+      }
+
+      .shop-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 14px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .shop-tabs {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+      }
+
+      .shop-tab {
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        color: #94a3b8;
+        padding: 8px 18px;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .shop-tab.active {
+        background: #f59e0b;
+        color: #0f172a;
+        border-color: #f59e0b;
+      }
+
+      .shop-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+        gap: 16px;
+      }
+
+      .shop-item-card {
+        background: rgba(30, 41, 59, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 14px;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        transition: transform 0.15s, border-color 0.15s;
+      }
+
+      .shop-item-card:hover {
+        transform: translateY(-2px);
+        border-color: rgba(245, 158, 11, 0.4);
+      }
+
+      .item-badge {
+        font-size: 11px;
+        font-weight: 800;
+        text-transform: uppercase;
+        color: #f59e0b;
+      }
+
+      .item-title {
+        font-size: 16px;
+        font-weight: 800;
+        color: #f8fafc;
+      }
+
+      .item-desc {
+        font-size: 12px;
+        color: #94a3b8;
+        line-height: 1.4;
+        min-height: 34px;
+      }
+
+      .item-level-dots {
+        display: flex;
+        gap: 4px;
+        margin: 4px 0;
+      }
+
+      .level-dot {
+        width: 14px;
+        height: 6px;
+        border-radius: 3px;
+        background: rgba(255, 255, 255, 0.15);
+      }
+
+      .level-dot.filled {
+        background: #f59e0b;
+      }
+
+      .buy-btn {
+        margin-top: auto;
+        background: rgba(245, 158, 11, 0.2);
+        border: 1px solid rgba(245, 158, 11, 0.4);
+        color: #fbbf24;
+        padding: 8px 12px;
+        border-radius: 10px;
+        font-size: 13px;
+        font-weight: 800;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        transition: all 0.15s;
+      }
+
+      .buy-btn:hover:not(:disabled) {
+        background: #f59e0b;
+        color: #0f172a;
+      }
+
+      .buy-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        border-color: rgba(255,255,255,0.1);
+        color: #64748b;
+        background: rgba(255,255,255,0.05);
+      }
+
+      .skin-preview-swatch {
+        width: 100%;
+        height: 48px;
+        border-radius: 8px;
+        margin-bottom: 6px;
+        border: 2px solid rgba(255, 255, 255, 0.2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 900;
+        font-size: 12px;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.7);
+      }
+
+      /* DRIVER LICENSE & RANK CARD IN SHOP/PROFILE */
+      .license-card {
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.95));
+        border: 2px solid rgba(245, 158, 11, 0.35);
+        border-radius: 16px;
+        padding: 20px;
+        margin-bottom: 20px;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .license-card::before {
+        content: 'REPUBLIQUE TUNISIENNE - PERMIS JAMA3I';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        background: #d90429;
+        color: white;
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 1.5px;
+        text-align: center;
+        padding: 3px 0;
+      }
+
+      .license-body {
+        margin-top: 14px;
+        display: flex;
+        gap: 18px;
+        align-items: center;
+      }
+
+      .license-avatar {
+        width: 64px;
+        height: 64px;
+        border-radius: 12px;
+        background: #1e293b;
+        border: 2px solid #f59e0b;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 32px;
+        flex-shrink: 0;
+      }
+
+      .license-info {
+        flex: 1;
+      }
+
+      .license-name {
+        font-size: 18px;
+        font-weight: 800;
+        color: #f8fafc;
+      }
+
+      .license-sub {
+        font-size: 13px;
+        color: #94a3b8;
+      }
+
+      .xp-progress-bar-bg {
+        width: 100%;
+        height: 10px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 5px;
+        overflow: hidden;
+        margin: 8px 0 4px 0;
+      }
+
+      .xp-progress-bar-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #f59e0b, #ef4444);
+        border-radius: 5px;
+        transition: width 0.3s ease;
+      }
+
+      .rank-gate-banner {
+        background: linear-gradient(135deg, rgba(217, 4, 41, 0.25), rgba(245, 158, 11, 0.15));
+        border: 1px dashed rgba(217, 4, 41, 0.6);
+        border-radius: 14px;
+        padding: 16px;
+        margin-top: 14px;
+        text-align: center;
+      }
+
+      /* LOGIN / SIGNUP MODAL */
+      #auth-modal {
+        display: none;
+      }
+
+      .auth-box {
+        max-width: 480px;
+        width: 100%;
+        text-align: left;
+      }
+
+      .auth-tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 20px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+        padding-bottom: 12px;
+      }
+
+      .auth-tab {
+        background: transparent;
+        border: none;
+        color: #94a3b8;
+        font-size: 16px;
+        font-weight: 800;
+        cursor: pointer;
+        padding: 6px 12px;
+        border-radius: 8px;
+        transition: all 0.2s;
+      }
+
+      .auth-tab.active {
+        color: #f59e0b;
+        background: rgba(245, 158, 11, 0.15);
+      }
+
+      .form-group {
+        margin-bottom: 16px;
+      }
+
+      .form-label {
+        display: block;
+        font-size: 13px;
+        font-weight: 700;
+        color: #cbd5e1;
+        margin-bottom: 6px;
+      }
+
+      .form-input {
+        width: 100%;
+        background: rgba(30, 41, 59, 0.8);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 10px;
+        padding: 12px 14px;
+        color: white;
+        font-size: 15px;
+        font-family: inherit;
+        outline: none;
+        transition: border-color 0.2s;
+      }
+
+      .form-input:focus {
+        border-color: #f59e0b;
+      }
+
+      .auth-alert {
+        background: rgba(239, 68, 68, 0.2);
+        border: 1px solid #ef4444;
+        color: #fca5a5;
+        padding: 10px 14px;
+        border-radius: 10px;
+        font-size: 13px;
+        margin-bottom: 14px;
+        display: none;
+      }
+
+      /* GAME OVER STATS */
+      .stats-table {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 14px;
+        padding: 16px;
+        margin: 20px 0;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .stat-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 14px;
+        color: #94a3b8;
+      }
+
+      .stat-row strong {
+        color: #f8fafc;
+        font-size: 16px;
+      }
+
+      /* TOP BAR ICONS (Mute, etc) */
+      .top-action-btn {
+        background: rgba(15, 23, 42, 0.85);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 12px;
+        padding: 10px 14px;
+        color: #f8fafc;
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .top-action-btn:hover {
+        background: rgba(30, 41, 59, 0.9);
+      }
+
+      /* NOTIFICATION MESSAGE */
+      #notice-banner {
+        position: fixed;
+        top: 76px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #0284c7;
+        color: white;
+        padding: 8px 20px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 800;
+        z-index: 200;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- 3D Canvas Container -->
+    <div id="game-canvas-container"></div>
+
+    <!-- UI Overlay Layer -->
+    <div class="ui-layer">
+      <!-- TOP HUD -->
+      <div id="hud" class="interactive">
+        <div style="display: flex; gap: 12px; align-items: center;">
+          <!-- Koursa Score -->
+          <div class="hud-card">
+            <span class="hud-icon">🎫</span>
+            <div>
+              <div class="hud-label">Koursa / كورسة</div>
+              <div class="hud-value kiraa-val" id="hud-score">0</div>
+            </div>
+          </div>
+          <!-- Passengers Count -->
+          <div class="hud-card">
+            <span class="hud-icon">👥</span>
+            <div>
+              <div class="hud-label">Rokkeb / ركاب</div>
+              <div class="hud-value" id="hud-passengers">0</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 12px; align-items: center;">
+          <!-- Driver Rank Badge (Clickable to open profile/auth) -->
+          <div class="driver-rank-badge" id="hud-driver-rank-badge" title="Driver License & Rank Status">
+            <span id="hud-rank-icon">⭐</span>
+            <span id="hud-rank-text">Lvl 1</span>
+          </div>
+
+          <!-- Gold Coins -->
+          <div class="hud-card">
+            <span class="hud-icon">🪙</span>
+            <div>
+              <div class="hud-label">Gold / دينار</div>
+              <div class="hud-value gold-val" id="hud-gold">250</div>
+            </div>
+          </div>
+          <!-- Audio / Mute -->
+          <button class="top-action-btn" id="btn-sound-toggle" title="Toggle Sound">
+            <span id="sound-icon">🔊</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Floating Tunisian Dialogues / Popups -->
+      <div id="popup-toast-container"></div>
+
+      <!-- BOTTOM CLUSTER & SPEEDOMETER -->
+      <div id="bottom-dock">
+        <div class="speedo-cluster interactive">
+          <div>
+            <span class="speedo-num" id="hud-speed">0</span>
+            <span class="speedo-unit">KM/H</span>
+          </div>
+          <div class="shield-status" id="hud-shield-status">
+            <span>🛡️</span>
+            <span id="hud-shield-text">SHIELD: ACTIVE</span>
+          </div>
+        </div>
+
+        <!-- Touch / On-screen controls -->
+        <div class="touch-controls">
+          <button class="touch-btn" id="btn-steer-left" aria-label="Steer Left">◀</button>
+          <button class="touch-btn horn-btn" id="btn-horn" aria-label="Klaxon">🎺</button>
+          <button class="touch-btn" id="btn-steer-right" aria-label="Steer Right">▶</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- START / TITLE MENU -->
+    <div id="start-menu" class="modal-screen interactive">
+      <div class="modal-box">
+        <!-- Driver Profile Status Bar -->
+        <div style="margin-bottom: 16px; display: flex; justify-content: center;">
+          <div class="driver-rank-badge" id="start-driver-status-badge">
+            <span id="start-driver-avatar">👤</span>
+            <span id="start-driver-label">Invité (Niveau 1)</span>
+          </div>
+        </div>
+
+        <div class="game-title">KOURSA <span>3D</span></div>
+        <div class="game-sub">
+          <span>Tunisian Street Rush</span>
+          <span class="tunisia-badge">🇹🇳 كـورسـة</span>
+        </div>
+
+        <p style="color: #cbd5e1; font-size: 14px; margin-bottom: 22px; line-height: 1.5;">
+          Navigate the chaotic streets of Tunis! Swerve past potholes, speed radars, and roadblocks. Pick up passengers for <strong>Koursa</strong> and rank up your driver license.
+        </p>
+
+        <button class="primary-btn" id="btn-start-game">
+          <span>🚖</span> Lancer le Moteur / Start
+        </button>
+
+        <button class="secondary-btn" id="btn-open-garage">
+          <span>🔧</span> Garage & Permis Chauffeur
+        </button>
+
+        <button class="secondary-btn" id="btn-open-leaderboard-start" style="border-color: rgba(250, 204, 21, 0.45); background: rgba(250, 204, 21, 0.1); color: #facc15;">
+          <span>🏆</span> Top 100 Global (Légendes Lvl 10)
+        </button>
+
+        <button class="secondary-btn" id="btn-open-auth-main" style="border-color: rgba(245, 158, 11, 0.4); background: rgba(245, 158, 11, 0.1); color: #fbbf24;">
+          <span id="auth-main-btn-icon">👤</span> <span id="auth-main-btn-text">Connexion / Inscription Chauffeur</span>
+        </button>
+
+        <div class="controls-guide">
+          <div><span class="kbd">A</span> / <span class="kbd">◄</span> Gauche</div>
+          <div><span class="kbd">D</span> / <span class="kbd">►</span> Droite</div>
+          <div><span class="kbd">W</span> Boost · <span class="kbd">H</span> Klaxon</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GAME OVER MODAL -->
+    <div id="game-over-modal" class="modal-screen interactive" style="display: none;">
+      <div class="modal-box">
+        <div class="game-title" style="color: #ef4444;">ACCIDENT ! <span>💥</span></div>
+        <div class="game-sub">
+          <span id="game-over-reason">M7atema fi 7afra! (Hit a pothole)</span>
+        </div>
+
+        <div class="stats-table">
+          <div class="stat-row">
+            <span>Total Koursa (Score)</span>
+            <strong class="kiraa-val" id="stat-final-score">0</strong>
+          </div>
+          <div class="stat-row">
+            <span>Passengers Transported</span>
+            <strong id="stat-final-passengers">0</strong>
+          </div>
+          <div class="stat-row">
+            <span>Distance Traveled</span>
+            <strong id="stat-final-distance">0.0 km</strong>
+          </div>
+          <div class="stat-row">
+            <span>XP Gained This Run</span>
+            <strong style="color: #a855f7;" id="stat-final-xp">+0 XP</strong>
+          </div>
+          <div class="stat-row">
+            <span>Gold Collected</span>
+            <strong class="gold-val" id="stat-final-gold">+0 🪙</strong>
+          </div>
+        </div>
+
+        <!-- Level 5 Gate Alert on Game Over if Guest -->
+        <div id="gameover-level5-alert" class="rank-gate-banner" style="display: none; margin-bottom: 16px;">
+          <div style="font-weight: 800; color: #ef4444; font-size: 14px; margin-bottom: 4px;">⚠️ LIMITE NIVEAU 5 ATTEINTE !</div>
+          <div style="font-size: 12px; color: #cbd5e1; margin-bottom: 10px;">
+            Vous avez atteint le rang maximum pour joueur invité. Connectez-vous ou inscrivez-vous pour débloquer le Niveau 6+ et devenir Capitaine Louage !
+          </div>
+          <button class="primary-btn" id="btn-gameover-unlock-rank" style="padding: 10px 16px; font-size: 14px;">
+            🔑 Débloquer Niveau 6+ (Login / Sign Up)
+          </button>
+        </div>
+
+        <button class="primary-btn" id="btn-restart-game">
+          <span>🔄</span> Rejouer / Play Again
+        </button>
+
+        <button class="secondary-btn" id="btn-gameover-garage">
+          <span>🔧</span> Garage & Permis
+        </button>
+      </div>
+    </div>
+
+    <!-- GARAGE & SHOP MODAL -->
+    <div id="shop-modal" class="modal-screen interactive">
+      <div class="modal-box shop-box">
+        <div class="shop-header">
+          <div>
+            <div class="game-title" style="font-size: 26px;">GARAGE <span>JAMA3I</span></div>
+            <div style="font-size: 13px; color: #94a3b8;">Upgrades, peintures & Permis de Conduire officiel</div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <button class="top-action-btn" id="btn-open-leaderboard-garage" title="Classement Top 100" style="padding: 6px 12px; color: #facc15; border-color: rgba(250, 204, 21, 0.4); font-size: 13px;">
+              <span>🏆</span> Top 100
+            </button>
+            <div class="hud-card" style="padding: 6px 14px;">
+              <span style="font-size: 18px;">🪙</span>
+              <span class="gold-val" style="font-size: 18px; font-weight: 800;" id="shop-gold-display">250</span>
+            </div>
+            <button class="top-action-btn" id="btn-close-shop" style="padding: 8px 12px;">✕ Close</button>
+          </div>
+        </div>
+
+        <!-- Shop Tabs -->
+        <div class="shop-tabs">
+          <button class="shop-tab active" data-tab="upgrades">Vehicle Tuning</button>
+          <button class="shop-tab" data-tab="skins">Paint & Skins</button>
+          <button class="shop-tab" data-tab="license">Permis & Rang (Level 1-10)</button>
+        </div>
+
+        <!-- Tab 1: Upgrades -->
+        <div id="tab-upgrades" class="shop-tab-content">
+          <div class="shop-grid" id="upgrades-container"></div>
+        </div>
+
+        <!-- Tab 2: Skins -->
+        <div id="tab-skins" class="shop-tab-content" style="display: none;">
+          <div class="shop-grid" id="skins-container"></div>
+        </div>
+
+        <!-- Tab 3: License & Rank (Replacing old simulated bank) -->
+        <div id="tab-license" class="shop-tab-content" style="display: none;">
+          <div id="license-card-container"></div>
+          <div style="margin-top: 18px;">
+            <h4 style="font-size: 15px; font-weight: 800; color: #f8fafc; margin-bottom: 12px;">HIÉRARCHIE DU SYNDICAT DES TAXIS (RANGS 1 À 10)</h4>
+            <div id="ranks-hierarchy-list" style="display: flex; flex-direction: column; gap: 10px;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LOGIN & SIGN UP MODAL -->
+    <div id="auth-modal" class="modal-screen interactive">
+      <div class="modal-box auth-box">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <div>
+            <div class="game-title" style="font-size: 24px;">REGISTRE <span>CHAUFFEUR</span></div>
+            <div style="font-size: 12px; color: #94a3b8;">Syndicat National des Taxis Jama3i · تونس</div>
+          </div>
+          <button class="top-action-btn" id="btn-close-auth" style="padding: 6px 10px;">✕</button>
+        </div>
+
+        <!-- Auth Tabs: Login vs Sign Up -->
+        <div class="auth-tabs">
+          <button class="auth-tab active" id="tab-btn-login">Se Connecter (Login)</button>
+          <button class="auth-tab" id="tab-btn-signup">Créer un Compte (Sign Up)</button>
+        </div>
+
+        <div class="auth-alert" id="auth-error-msg"></div>
+
+        <!-- LOGIN FORM -->
+        <form id="form-login" onsubmit="return false;">
+          <div class="form-group">
+            <label class="form-label">Nom d'utilisateur ou Email / Matricule</label>
+            <input type="text" class="form-input" id="login-username" placeholder="ex: Amine_Chiffour" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Mot de passe</label>
+            <input type="password" class="form-input" id="login-password" placeholder="••••••••" required />
+          </div>
+          <button type="submit" class="primary-btn" id="btn-submit-login">
+            <span>🔑</span> Se Connecter & Débloquer Rangs
+          </button>
+        </form>
+
+        <!-- SIGN UP FORM -->
+        <form id="form-signup" onsubmit="return false;" style="display: none;">
+          <div class="form-group">
+            <label class="form-label">Nom du Chauffeur (Identifiant)</label>
+            <input type="text" class="form-input" id="signup-username" placeholder="ex: Sami_Jama3i" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Station d'Attache / Région</label>
+            <select class="form-input" id="signup-region">
+              <option value="Station Bab Alioua (Tunis)">Station Bab Alioua (Tunis)</option>
+              <option value="Station Le Passage (Centre-Ville)">Station Le Passage (Centre-Ville)</option>
+              <option value="Station Ariana">Station Ariana</option>
+              <option value="Station Ben Arous">Station Ben Arous</option>
+              <option value="Station La Marsa">Station La Marsa</option>
+              <option value="Station Sousse - Sahel">Station Sousse - Sahel</option>
+              <option value="Station Sfax - Route de Téniour">Station Sfax - Route de Téniour</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Mot de passe</label>
+            <input type="password" class="form-input" id="signup-password" placeholder="Au moins 4 caractères" required />
+          </div>
+          <div style="background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 10px; padding: 10px; font-size: 12px; color: #fde68a; margin-bottom: 16px;">
+            🎁 <strong>Bonus d'inscription :</strong> Débloquez immédiatement la progression après le Niveau 5 (Rangs 6 à 10) + recevez <strong>+200 🪙 de prime de bienvenue !</strong>
+          </div>
+          <button type="submit" class="primary-btn" id="btn-submit-signup">
+            <span>📝</span> Enregistrer mon Permis Pro (+200 🪙)
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- TOP 100 GLOBAL LEADERBOARD MODAL (LEVEL 10 GATE) -->
+    <div id="leaderboard-modal" class="modal-screen interactive" style="display: none;">
+      <div class="modal-box" style="max-width: 720px; width: 100%; text-align: left; max-height: 88vh; display: flex; flex-direction: column; padding: 28px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.12); padding-bottom: 12px;">
+          <div>
+            <div class="game-title" style="font-size: 24px; display: flex; align-items: center; gap: 8px;">
+              <span>🏆</span> TOP 100 <span style="color: #facc15;">LÉGENDES</span>
+            </div>
+            <div style="font-size: 12px; color: #94a3b8;">Panthéon Mondial des Chauffeurs · تونس</div>
+          </div>
+          <button class="top-action-btn" id="btn-close-leaderboard" style="padding: 6px 12px;">✕ Close</button>
+        </div>
+
+        <!-- STATE A: LOCKED (< Level 10) -->
+        <div id="leaderboard-locked-view" style="display: none; text-align: center; padding: 20px 10px;">
+          <div style="font-size: 58px; margin-bottom: 10px; filter: drop-shadow(0 0 20px rgba(239, 68, 68, 0.5));">🔒</div>
+          <div style="font-size: 20px; font-weight: 800; color: #ef4444; margin-bottom: 6px; font-family: 'Changa', 'Outfit', sans-serif;">
+            مغلق! خاص بالأساتذة (Level 10)
+          </div>
+          <div style="font-size: 15px; color: #fde047; font-weight: 700; margin-bottom: 14px; font-family: 'Changa', 'Outfit', sans-serif;">
+            وصل لـ Level 10: Légende Vivante de Tunis باش تتنافس مع أقوى الشوافرية!
+          </div>
+          <p style="font-size: 13px; color: #cbd5e1; max-width: 500px; margin: 0 auto 18px auto; line-height: 1.5;">
+            Ce Panthéon d'Élite est strictement réservé aux pilotes ayant atteint le rang ultime du Syndicat (23,000 XP). Seuls les maîtres du volant peuvent figurer dans ce classement de prestige.
+          </p>
+
+          <!-- Current Rank & Level 10 Progress -->
+          <div style="background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px; padding: 14px 18px; max-width: 480px; margin: 0 auto 18px auto; text-align: left;">
+            <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; margin-bottom: 6px;">
+              <span id="lb-lock-current-rank" style="color: #f59e0b;">Niveau Actuel: Lvl 1</span>
+              <span id="lb-lock-xp-text" style="color: #94a3b8;">0 / 23,000 XP</span>
+            </div>
+            <div class="xp-progress-bar-bg" style="height: 12px; margin: 0 0 8px 0;">
+              <div id="lb-lock-progress-fill" class="xp-progress-bar-fill" style="width: 5%;"></div>
+            </div>
+            <div style="font-size: 11px; color: #94a3b8; display: flex; justify-content: space-between;">
+              <span>Niveau 1 (Stagiaire)</span>
+              <span style="color: #facc15; font-weight: 800;">Objectif: Niveau 10 (23,000 XP)</span>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 10px; justify-content: center; max-width: 460px; margin: 0 auto;">
+            <button class="primary-btn" id="btn-lb-lock-play" style="padding: 12px 20px; font-size: 14px;">
+              <span>🚖</span> Conduire pour Gagner de l'XP
+            </button>
+            <button class="secondary-btn" id="btn-lb-test-unlock" style="width: auto; margin-top: 0; padding: 12px 14px; font-size: 12px; border-color: rgba(250, 204, 21, 0.4); color: #fde047;" title="Tester le déblocage Niveau 10 immédiatement">
+              ⚡ Test Level 10
+            </button>
+          </div>
+        </div>
+
+        <!-- STATE B: UNLOCKED (>= Level 10) -->
+        <div id="leaderboard-unlocked-view" style="display: none; flex-direction: column; flex: 1; overflow: hidden;">
+          <div style="background: linear-gradient(135deg, rgba(234, 179, 8, 0.2), rgba(217, 4, 41, 0.2)); border: 1px solid rgba(250, 204, 21, 0.4); border-radius: 12px; padding: 12px 16px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="font-size: 26px;">🌟</span>
+              <div>
+                <div style="font-weight: 800; font-size: 14px; color: #fef08a;">PANTHÉON DÉBLOQUÉ · LÉGENDE VIVANTE</div>
+                <div style="font-size: 12px; color: #cbd5e1;" id="lb-user-status-text">Vous êtes qualifié dans l'élite mondiale des routes de Tunis !</div>
+              </div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-size: 11px; color: #94a3b8; font-weight: 700;">VOTRE RECORD</div>
+              <div style="font-size: 16px; font-weight: 900; color: #38bdf8;" id="lb-user-high-score">0 Koursa</div>
+            </div>
+          </div>
+
+          <!-- Clean Empty State Container (Displayed when no real records yet) -->
+          <div id="leaderboard-empty-state" style="display: none; text-align: center; padding: 36px 20px; background: rgba(15, 23, 42, 0.6); border: 2px dashed rgba(250, 204, 21, 0.35); border-radius: 14px; margin: 10px 0;">
+            <div style="font-size: 46px; margin-bottom: 10px; filter: drop-shadow(0 0 16px rgba(250, 204, 21, 0.3));">🏆</div>
+            <div style="font-size: 19px; font-weight: 800; color: #facc15; margin-bottom: 8px; font-family: 'Changa', 'Outfit', sans-serif;">
+              لا توجد أرقام قياسية بعد. كن أول أسطورة يسجل اسمه!
+            </div>
+            <div style="font-size: 13px; color: #cbd5e1; max-width: 460px; margin: 0 auto 16px auto; line-height: 1.5;">
+              Aucun score de légende n'a encore été enregistré dans le registre officiel. Prenez la route, atteignez un record de Koursa et devenez le premier à inscrire votre nom au Panthéon !
+            </div>
+            <button class="primary-btn" id="btn-lb-empty-play" style="max-width: 240px; margin: 0 auto; padding: 10px 18px; font-size: 13px;">
+              <span>🚖</span> Conduire Maintenant
+            </button>
+          </div>
+
+          <!-- Dynamic Table Container with custom scrollbar -->
+          <div id="leaderboard-table-container" style="overflow-y: auto; max-height: 48vh; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; background: rgba(15, 23, 42, 0.6);">
+            <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;">
+              <thead>
+                <tr style="background: rgba(30, 41, 59, 0.95); position: sticky; top: 0; z-index: 10; border-bottom: 1px solid rgba(255, 255, 255, 0.15); color: #94a3b8; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">
+                  <th style="padding: 10px 14px; width: 65px;"># Rang</th>
+                  <th style="padding: 10px 14px;">Chauffeur (اسم الشيفور)</th>
+                  <th style="padding: 10px 14px;">Station / المحطة</th>
+                  <th style="padding: 10px 14px; text-align: right;">Score Koursa (أعلى كورسة)</th>
+                </tr>
+              </thead>
+              <tbody id="leaderboard-table-body">
+                <!-- Dynamically populated from actual player scores / backend -->
+              </tbody>
+            </table>
+          </div>
+          <div style="margin-top: 10px; font-size: 11px; color: #64748b; text-align: right;">
+            <span>Base de données dynamique · Prêt pour intégration Supabase 🇹🇳</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="notice-banner"></div>
+
+    <!-- ================= GAME SCRIPT ================= -->
+    <script>
+      (function () {
+        // --- 1. LOCAL STORAGE & DATA SYSTEM ---
+        const STORAGE_KEY = 'taxijama3i_save_v3';
+        const ACCOUNTS_STORAGE_KEY = 'taxijama3i_accounts_v1';
+        const SESSION_STORAGE_KEY = 'taxijama3i_session_v1';
+
+        // 10 Ranks of the Tunisian Taxi Syndicate
+        const RANKS = [
+          { level: 1, title: 'Stagiaire', arabic: 'متدرب', minXP: 0, maxXP: 500, perk: 'Permis provisoire' },
+          { level: 2, title: 'Chiffour Débutant', arabic: 'سائق مبتدئ', minXP: 500, maxXP: 1200, perk: '+5% Koursa bonus' },
+          { level: 3, title: 'Chauffeur Urbain', arabic: 'سائق محترف', minXP: 1200, maxXP: 2200, perk: '+10% Koursa bonus' },
+          { level: 4, title: 'Roi des Raccourcis', arabic: 'ملك الطرقات', minXP: 2200, maxXP: 3600, perk: '+15% Koursa bonus' },
+          { level: 5, title: 'Maître du Volant', arabic: 'أستاذ السياقة', minXP: 3600, maxXP: 5200, perk: 'Limite Joueur Invité (Cap Level 5)' },
+          // --- RANKS 6 TO 10 REQUIRE LOGIN & SIGNUP ---
+          { level: 6, title: 'Capitaine Louage', arabic: 'كابتن لواج', minXP: 5200, maxXP: 7500, perk: '👑 Compte Officiel Requis ! +25% Koursa' },
+          { level: 7, title: 'Légende de Bab Alioua', arabic: 'أسطورة باب عليوة', minXP: 7500, maxXP: 11000, perk: '🛡️ Bouclier supplémentaire + 30% Koursa' },
+          { level: 8, title: 'Sultan du Bitume', arabic: 'سلطان الطرقات', minXP: 11000, maxXP: 16000, perk: '⚡ Vitesse turbo max + 35% Koursa' },
+          { level: 9, title: 'Grand Chiffour d\'Or', arabic: 'كبير الشوافرية', minXP: 16000, maxXP: 23000, perk: '🪙 Bonus Gold x2 sur la route' },
+          { level: 10, title: 'Légende Vivante de Tunis', arabic: 'الأسطورة الحية', minXP: 23000, maxXP: 999999, perk: '🌟 Statut Prestige Éternel' }
+        ];
+
+        const DEFAULT_DATA = {
+          gold: 250, // Starting Gold: 250 Gold coins instantly on first launch!
+          xp: 0,
+          highScore: 0,
+          bestDistance: 0,
+          passengersCount: 0,
+          activeSkin: 'classic',
+          unlockedSkins: ['classic'],
+          upgrades: {
+            engine: 1,    // Max 5
+            handling: 1,  // Max 5
+            seats: 1,     // Max 5 (Koursa multiplier)
+            shield: 1     // Max 3 (Collision protection)
+          }
+        };
+
+        let playerData = loadData();
+        let currentUser = loadSession();
+
+        function loadSession() {
+          try {
+            const raw = localStorage.getItem(SESSION_STORAGE_KEY);
+            return raw ? JSON.parse(raw) : null;
+          } catch (e) {
+            return null;
+          }
+        }
+
+        function saveSession(user) {
+          currentUser = user;
+          try {
+            if (user) {
+              localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(user));
+            } else {
+              localStorage.removeItem(SESSION_STORAGE_KEY);
+            }
+          } catch (e) {}
+          updateAuthUI();
+        }
+
+        function loadAccounts() {
+          try {
+            const raw = localStorage.getItem(ACCOUNTS_STORAGE_KEY);
+            return raw ? JSON.parse(raw) : [];
+          } catch (e) {
+            return [];
+          }
+        }
+
+        function saveAccounts(accounts) {
+          try {
+            localStorage.setItem(ACCOUNTS_STORAGE_KEY, JSON.stringify(accounts));
+          } catch (e) {}
+        }
+
+        function loadData() {
+          try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (!raw) {
+              saveData(DEFAULT_DATA);
+              return JSON.parse(JSON.stringify(DEFAULT_DATA));
+            }
+            const parsed = JSON.parse(raw);
+            return { ...DEFAULT_DATA, ...parsed, upgrades: { ...DEFAULT_DATA.upgrades, ...parsed.upgrades } };
+          } catch (e) {
+            return JSON.parse(JSON.stringify(DEFAULT_DATA));
+          }
+        }
+
+        function saveData(data) {
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+          } catch (e) {}
+        }
+
+        function showNotification(msg) {
+          const banner = document.getElementById('notice-banner');
+          banner.innerText = msg;
+          banner.style.opacity = '1';
+          setTimeout(() => { banner.style.opacity = '0'; }, 2600);
+        }
+
+        // --- 2. RANK & LEVEL CALCULATION WITH LEVEL 5 GATE ---
+        function getCurrentRank(xp) {
+          for (let i = RANKS.length - 1; i >= 0; i--) {
+            if (xp >= RANKS[i].minXP) {
+              return RANKS[i];
+            }
+          }
+          return RANKS[0];
+        }
+
+        function addDriverXP(amount) {
+          const currentRankBefore = getCurrentRank(playerData.xp);
+
+          // GUEST CAP AT LEVEL 5: Max XP is 5200 unless logged in!
+          if (!currentUser) {
+            if (playerData.xp + amount >= 5200) {
+              playerData.xp = 5200; // Capped at Level 5 max
+              saveData(playerData);
+              return { capped: true, currentRank: RANKS[4] };
+            }
+          }
+
+          playerData.xp += amount;
+          saveData(playerData);
+
+          const currentRankAfter = getCurrentRank(playerData.xp);
+
+          // Level Up check!
+          if (currentRankAfter.level > currentRankBefore.level) {
+            sound.playCoin();
+            triggerFlavorToast(`🎉 ترقية: ${currentRankAfter.arabic} (Lvl ${currentRankAfter.level})!`);
+            showNotification(`🏆 NIVEAU SUPÉRIEUR : ${currentRankAfter.title} (Lvl ${currentRankAfter.level}) !`);
+          }
+
+          return { capped: false, currentRank: currentRankAfter };
+        }
+
+        // --- 3. TUNISIAN FLAVOR PHRASES ---
+        const TUNISIAN_QUOTES = [
+          'كورسة باهية بـ 3000!',
+          'أحسن كورسة مع الشيفور!',
+          'كورسة للمرسى يا باهي!',
+          'على باب عليوة كورسة سريعة!',
+          'قداش الكورسة يا معلم؟',
+          'أيا سكر الباب بربي!',
+          'زيد شوية لقدام!',
+          'برج الوزير فارغ؟',
+          'يعطيك الصحة يا معلم!',
+          'سياقة محترفة والله!',
+          'أخلط على الكار!',
+          'حي التضامن ديركت!',
+          'طالع ولا هابط؟',
+          'الصرف من فضلك!'
+        ];
+
+        function triggerFlavorToast(text) {
+          const container = document.getElementById('popup-toast-container');
+          const toast = document.createElement('div');
+          toast.className = 'popup-toast';
+          toast.innerText = text || TUNISIAN_QUOTES[Math.floor(Math.random() * TUNISIAN_QUOTES.length)];
+          container.appendChild(toast);
+          setTimeout(() => {
+            if (toast.parentNode) toast.parentNode.removeChild(toast);
+          }, 1600);
+        }
+
+        // --- 4. PROCEDURAL WEB AUDIO SYNTHESIZER ---
+        class SoundEngine {
+          constructor() {
+            this.ctx = null;
+            this.muted = false;
+            this.engineOsc = null;
+            this.engineGain = null;
+          }
+
+          init() {
+            if (!this.ctx) {
+              const AudioContext = window.AudioContext || window.webkitAudioContext;
+              if (AudioContext) this.ctx = new AudioContext();
+            }
+            if (this.ctx && this.ctx.state === 'suspended') {
+              this.ctx.resume();
+            }
+          }
+
+          toggleMute() {
+            this.muted = !this.muted;
+            if (this.engineGain) {
+              this.engineGain.gain.setValueAtTime(this.muted ? 0 : 0.05, this.ctx ? this.ctx.currentTime : 0);
+            }
+            return !this.muted;
+          }
+
+          startEngine() {
+            if (this.muted || !this.ctx || this.engineOsc) return;
+            try {
+              this.engineOsc = this.ctx.createOscillator();
+              this.engineGain = this.ctx.createGain();
+              this.engineOsc.type = 'sawtooth';
+              this.engineOsc.frequency.setValueAtTime(55, this.ctx.currentTime);
+              
+              const filter = this.ctx.createBiquadFilter();
+              filter.type = 'lowpass';
+              filter.frequency.setValueAtTime(220, this.ctx.currentTime);
+
+              this.engineGain.gain.setValueAtTime(0.04, this.ctx.currentTime);
+              this.engineOsc.connect(filter);
+              filter.connect(this.engineGain);
+              this.engineGain.connect(this.ctx.destination);
+              this.engineOsc.start();
+            } catch (e) {}
+          }
+
+          updateEnginePitch(speedRatio) {
+            if (!this.engineOsc || !this.ctx || this.muted) return;
+            const targetFreq = 55 + speedRatio * 90;
+            this.engineOsc.frequency.setTargetAtTime(targetFreq, this.ctx.currentTime, 0.1);
+          }
+
+          stopEngine() {
+            if (this.engineOsc) {
+              try {
+                this.engineOsc.stop();
+                this.engineOsc.disconnect();
+              } catch (e) {}
+              this.engineOsc = null;
+            }
+          }
+
+          playCoin() {
+            if (this.muted || !this.ctx) return;
+            const now = this.ctx.currentTime;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(987.77, now);
+            osc.frequency.exponentialRampToValueAtTime(1318.51, now + 0.12);
+            gain.gain.setValueAtTime(0.12, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.25);
+          }
+
+          playPassengerPickup() {
+            if (this.muted || !this.ctx) return;
+            const now = this.ctx.currentTime;
+            [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
+              const osc = this.ctx.createOscillator();
+              const gain = this.ctx.createGain();
+              osc.type = 'triangle';
+              osc.frequency.setValueAtTime(freq, now + idx * 0.04);
+              gain.gain.setValueAtTime(0.14, now + idx * 0.04);
+              gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.04 + 0.2);
+              osc.connect(gain);
+              gain.connect(this.ctx.destination);
+              osc.start(now + idx * 0.04);
+              osc.stop(now + idx * 0.04 + 0.22);
+            });
+          }
+
+          playHorn() {
+            if (this.muted || !this.ctx) return;
+            const now = this.ctx.currentTime;
+            [370, 440].forEach((freq) => {
+              const osc = this.ctx.createOscillator();
+              const gain = this.ctx.createGain();
+              osc.type = 'sawtooth';
+              osc.frequency.setValueAtTime(freq, now);
+              gain.gain.setValueAtTime(0.09, now);
+              gain.gain.setValueAtTime(0.09, now + 0.18);
+              gain.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
+              osc.connect(gain);
+              gain.connect(this.ctx.destination);
+              osc.start(now);
+              osc.stop(now + 0.25);
+            });
+          }
+
+          playCrash() {
+            if (this.muted || !this.ctx) return;
+            const now = this.ctx.currentTime;
+            const bufferSize = this.ctx.sampleRate * 0.4;
+            const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+              data[i] = Math.random() * 2 - 1;
+            }
+            const noise = this.ctx.createBufferSource();
+            noise.buffer = buffer;
+            const filter = this.ctx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(800, now);
+            filter.frequency.linearRampToValueAtTime(100, now + 0.4);
+            const gain = this.ctx.createGain();
+            gain.gain.setValueAtTime(0.3, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+            noise.connect(filter);
+            filter.connect(gain);
+            gain.connect(this.ctx.destination);
+            noise.start(now);
+          }
+
+          playShieldAbsorb() {
+            if (this.muted || !this.ctx) return;
+            const now = this.ctx.currentTime;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(200, now);
+            osc.frequency.exponentialRampToValueAtTime(600, now + 0.2);
+            gain.gain.setValueAtTime(0.2, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.26);
+          }
+        }
+
+        const sound = new SoundEngine();
+
+        // --- 5. GAME STATE VARIABLES ---
+        const LANES = [-3.6, 0, 3.6];
+        let currentLane = 1;
+        let targetX = LANES[currentLane];
+        let currentSpeed = 0;
+        let baseSpeed = 38;
+        let maxSpeed = 70;
+        let laneSwitchSpeed = 12;
+
+        let score = 0;
+        let passengersCollectedRun = 0;
+        let goldCollectedRun = 0;
+        let xpGainedRun = 0;
+        let distanceTraveled = 0;
+        let hasShield = false;
+
+        let gameState = 'MENU';
+
+        // Three.js Core
+        let scene, camera, renderer;
+        let playerTaxiGroup;
+        let wheels = [];
+        let taxiBodyMesh;
+        let roadSegments = [];
+        let activeObstacles = [];
+        let activeCollectibles = [];
+
+        // Colors & Skin definitions
+        const SKINS = {
+          classic: {
+            name: 'Jaune Jama3i (Classic)',
+            price: 0,
+            bodyColor: 0xf59e0b,
+            stripeColor: 0x111827,
+            accentColor: 0xffffff,
+            swatch: 'linear-gradient(135deg, #f59e0b 60%, #111827 60%)'
+          },
+          sidibou: {
+            name: 'Sidi Bou Said',
+            price: 3000,
+            bodyColor: 0xf8fafc,
+            stripeColor: 0x0284c7,
+            accentColor: 0x38bdf8,
+            swatch: 'linear-gradient(135deg, #ffffff 60%, #0284c7 60%)'
+          },
+          louage: {
+            name: 'Louage Express (Red)',
+            price: 5000,
+            bodyColor: 0xffffff,
+            stripeColor: 0xd90429,
+            accentColor: 0x111827,
+            swatch: 'linear-gradient(135deg, #ffffff 60%, #d90429 60%)'
+          },
+          gold: {
+            name: 'Dinar Doré (VIP Gold)',
+            price: 25000,
+            bodyColor: 0xfacc15,
+            stripeColor: 0x78350f,
+            accentColor: 0xfef08a,
+            swatch: 'linear-gradient(135deg, #facc15 60%, #78350f 60%)'
+          },
+          cyber: {
+            name: 'Cyber Jama3i (Neon)',
+            price: 45000,
+            bodyColor: 0x0f172a,
+            stripeColor: 0x06b6d4,
+            accentColor: 0x3b82f6,
+            swatch: 'linear-gradient(135deg, #0f172a 60%, #06b6d4 60%)'
+          }
+        };
+
+        // --- 6. INITIALIZE THREE.JS SCENE ---
+        function initScene() {
+          const container = document.getElementById('game-canvas-container');
+
+          scene = new THREE.Scene();
+          scene.background = new THREE.Color(0x93c5fd);
+          scene.fog = new THREE.FogExp2(0x93c5fd, 0.007);
+
+          camera = new THREE.PerspectiveCamera(58, window.innerWidth / window.innerHeight, 0.1, 350);
+          camera.position.set(0, 5.2, 10.5);
+          camera.lookAt(0, 1.6, -8);
+
+          renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+          renderer.setSize(window.innerWidth, window.innerHeight);
+          renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+          renderer.outputColorSpace = THREE.SRGBColorSpace;
+          renderer.toneMapping = THREE.ACESFilmicToneMapping;
+          renderer.toneMappingExposure = 1.15;
+          renderer.shadowMap.enabled = true;
+          renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+          container.appendChild(renderer.domElement);
+
+          const ambientLight = new THREE.HemisphereLight(0xffedd5, 0x475569, 0.7);
+          scene.add(ambientLight);
+
+          const sunLight = new THREE.DirectionalLight(0xfffbeb, 1.4);
+          sunLight.position.set(30, 60, 20);
+          sunLight.castShadow = true;
+          sunLight.shadow.mapSize.width = 1024;
+          sunLight.shadow.mapSize.height = 1024;
+          sunLight.shadow.camera.near = 10;
+          sunLight.shadow.camera.far = 160;
+          sunLight.shadow.camera.left = -25;
+          sunLight.shadow.camera.right = 25;
+          sunLight.shadow.camera.top = 40;
+          sunLight.shadow.camera.bottom = -40;
+          sunLight.shadow.bias = -0.0005;
+          scene.add(sunLight);
+
+          createPlayerTaxi();
+          initRoadSystem();
+
+          window.addEventListener('resize', onWindowResize);
+        }
+
+        function onWindowResize() {
+          if (!camera || !renderer) return;
+          camera.aspect = window.innerWidth / window.innerHeight;
+          camera.updateProjectionMatrix();
+          renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // --- 7. PROCEDURAL 3D TAXI JAMA3I VAN ---
+        function createPlayerTaxi() {
+          playerTaxiGroup = new THREE.Group();
+          wheels = [];
+
+          const currentSkinConfig = SKINS[playerData.activeSkin] || SKINS.classic;
+
+          // Main Van Chassis / Body
+          const bodyGeo = new THREE.BoxGeometry(2.1, 1.45, 4.4);
+          const bodyMat = new THREE.MeshStandardMaterial({
+            color: currentSkinConfig.bodyColor,
+            roughness: 0.25,
+            metalness: 0.15
+          });
+          taxiBodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
+          taxiBodyMesh.position.y = 1.05;
+          taxiBodyMesh.castShadow = true;
+          taxiBodyMesh.receiveShadow = true;
+          playerTaxiGroup.add(taxiBodyMesh);
+
+          // Cab Windshield & Windows
+          const cabinGeo = new THREE.BoxGeometry(2.02, 0.8, 2.7);
+          const glassMat = new THREE.MeshStandardMaterial({
+            color: 0x1e293b,
+            roughness: 0.1,
+            metalness: 0.85
+          });
+          const cabinMesh = new THREE.Mesh(cabinGeo, glassMat);
+          cabinMesh.position.set(0, 1.6, -0.4);
+          playerTaxiGroup.add(cabinMesh);
+
+          // Roof top visor/cap
+          const roofCapGeo = new THREE.BoxGeometry(2.05, 0.12, 2.8);
+          const roofCap = new THREE.Mesh(roofCapGeo, bodyMat);
+          roofCap.position.set(0, 2.05, -0.4);
+          playerTaxiGroup.add(roofCap);
+
+          // Iconic Side Stripe
+          const stripeGeo = new THREE.BoxGeometry(2.14, 0.26, 4.2);
+          const stripeMat = new THREE.MeshStandardMaterial({
+            color: currentSkinConfig.stripeColor,
+            roughness: 0.5
+          });
+          const stripeMesh = new THREE.Mesh(stripeGeo, stripeMat);
+          stripeMesh.position.set(0, 0.98, 0);
+          playerTaxiGroup.add(stripeMesh);
+
+          // Front Hood & Grille
+          const hoodGeo = new THREE.BoxGeometry(1.95, 0.65, 1.1);
+          const hoodMesh = new THREE.Mesh(hoodGeo, bodyMat);
+          hoodMesh.position.set(0, 0.85, -2.1);
+          playerTaxiGroup.add(hoodMesh);
+
+          // Chrome Grille & Bumpers
+          const bumperGeo = new THREE.BoxGeometry(2.15, 0.3, 0.35);
+          const bumperMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.6, metalness: 0.4 });
+          const frontBumper = new THREE.Mesh(bumperGeo, bumperMat);
+          frontBumper.position.set(0, 0.48, -2.6);
+          frontBumper.castShadow = true;
+          playerTaxiGroup.add(frontBumper);
+
+          const rearBumper = new THREE.Mesh(bumperGeo, bumperMat);
+          rearBumper.position.set(0, 0.48, 2.25);
+          playerTaxiGroup.add(rearBumper);
+
+          // Headlights
+          const lightGeo = new THREE.BoxGeometry(0.35, 0.22, 0.1);
+          const lightMat = new THREE.MeshStandardMaterial({
+            color: 0xfef08a,
+            emissive: 0xfde047,
+            emissiveIntensity: 0.8
+          });
+          const leftHeadlight = new THREE.Mesh(lightGeo, lightMat);
+          leftHeadlight.position.set(-0.75, 0.85, -2.67);
+          const rightHeadlight = new THREE.Mesh(lightGeo, lightMat);
+          rightHeadlight.position.set(0.75, 0.85, -2.67);
+          playerTaxiGroup.add(leftHeadlight, rightHeadlight);
+
+          // Tail lights
+          const tailLightMat = new THREE.MeshStandardMaterial({
+            color: 0xef4444,
+            emissive: 0xd90429,
+            emissiveIntensity: 0.6
+          });
+          const leftTail = new THREE.Mesh(lightGeo, tailLightMat);
+          leftTail.position.set(-0.8, 0.95, 2.22);
+          const rightTail = new THREE.Mesh(lightGeo, tailLightMat);
+          rightTail.position.set(0.8, 0.95, 2.22);
+          playerTaxiGroup.add(leftTail, rightTail);
+
+          // Rooftop "TAXI JAMA3I" Sign
+          const signBoxGeo = new THREE.BoxGeometry(1.2, 0.35, 0.55);
+          const signBoxMat = new THREE.MeshStandardMaterial({
+            color: 0xffffff,
+            emissive: 0xffedd5,
+            emissiveIntensity: 0.6,
+            roughness: 0.2
+          });
+          const roofSign = new THREE.Mesh(signBoxGeo, signBoxMat);
+          roofSign.position.set(0, 2.25, -0.6);
+          playerTaxiGroup.add(roofSign);
+
+          const signBaseGeo = new THREE.BoxGeometry(0.5, 0.1, 0.3);
+          const signBaseMat = new THREE.MeshStandardMaterial({ color: 0x0f172a });
+          const signBase = new THREE.Mesh(signBaseGeo, signBaseMat);
+          signBase.position.set(0, 2.1, -0.6);
+          playerTaxiGroup.add(signBase);
+
+          // License plate
+          const plateGeo = new THREE.BoxGeometry(0.65, 0.18, 0.05);
+          const plateMat = new THREE.MeshStandardMaterial({ color: 0x111827 });
+          const plate = new THREE.Mesh(plateGeo, plateMat);
+          plate.position.set(0, 0.48, -2.78);
+          playerTaxiGroup.add(plate);
+
+          // Wheels
+          const wheelGeo = new THREE.CylinderGeometry(0.44, 0.44, 0.35, 18);
+          wheelGeo.rotateZ(Math.PI / 2);
+          const tireMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.9 });
+          const rimMat = new THREE.MeshStandardMaterial({ color: 0xcbd5e1, metalness: 0.8, roughness: 0.2 });
+
+          const wheelPositions = [
+            [-1.05, 0.44, -1.5],
+            [1.05, 0.44, -1.5],
+            [-1.05, 0.44, 1.4],
+            [1.05, 0.44, 1.4]
+          ];
+
+          wheelPositions.forEach((pos) => {
+            const wheelGroup = new THREE.Group();
+            const tire = new THREE.Mesh(wheelGeo, tireMat);
+            tire.castShadow = true;
+            wheelGroup.add(tire);
+
+            const rimGeo = new THREE.CylinderGeometry(0.24, 0.24, 0.36, 12);
+            rimGeo.rotateZ(Math.PI / 2);
+            const rim = new THREE.Mesh(rimGeo, rimMat);
+            wheelGroup.add(rim);
+
+            wheelGroup.position.set(pos[0], pos[1], pos[2]);
+            playerTaxiGroup.add(wheelGroup);
+            wheels.push(wheelGroup);
+          });
+
+          // Soft Contact Shadow Plane Grounding
+          const shadowGeo = new THREE.PlaneGeometry(2.8, 5.2);
+          const shadowCanvas = document.createElement('canvas');
+          shadowCanvas.width = 128;
+          shadowCanvas.height = 128;
+          const sctx = shadowCanvas.getContext('2d');
+          const grad = sctx.createRadialGradient(64, 64, 10, 64, 64, 64);
+          grad.addColorStop(0, 'rgba(0,0,0,0.65)');
+          grad.addColorStop(1, 'rgba(0,0,0,0)');
+          sctx.fillStyle = grad;
+          sctx.fillRect(0, 0, 128, 128);
+          const shadowTex = new THREE.CanvasTexture(shadowCanvas);
+          const shadowMat = new THREE.MeshBasicMaterial({
+            map: shadowTex,
+            transparent: true,
+            opacity: 0.55,
+            depthWrite: false
+          });
+          const shadowMesh = new THREE.Mesh(shadowGeo, shadowMat);
+          shadowMesh.rotation.x = -Math.PI / 2;
+          shadowMesh.position.y = 0.04;
+          playerTaxiGroup.add(shadowMesh);
+
+          playerTaxiGroup.position.set(0, 0, 0);
+          scene.add(playerTaxiGroup);
+        }
+
+        function updateTaxiSkin() {
+          if (!playerTaxiGroup || !taxiBodyMesh) return;
+          const skin = SKINS[playerData.activeSkin] || SKINS.classic;
+          taxiBodyMesh.material.color.setHex(skin.bodyColor);
+        }
+
+        // --- 8. CONTINUOUS SCROLLING ROAD & SCENERY ---
+        const SEGMENT_LENGTH = 90;
+        const NUM_SEGMENTS = 4;
+        const ROAD_WIDTH = 13;
+
+        function createPalmTree() {
+          const tree = new THREE.Group();
+          const trunkGeo = new THREE.CylinderGeometry(0.3, 0.45, 6, 7);
+          const trunkMat = new THREE.MeshStandardMaterial({ color: 0x854d0e, roughness: 0.9 });
+          const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+          trunk.position.y = 3;
+          trunk.rotation.z = (Math.random() - 0.5) * 0.15;
+          trunk.castShadow = true;
+          tree.add(trunk);
+
+          const frondGeo = new THREE.ConeGeometry(2.4, 1.2, 5);
+          const frondMat = new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.8 });
+          const crown = new THREE.Mesh(frondGeo, frondMat);
+          crown.position.y = 6;
+          crown.scale.set(1.5, 0.8, 1.5);
+          crown.castShadow = true;
+          tree.add(crown);
+
+          return tree;
+        }
+
+        function createTunisianBuilding() {
+          const bldg = new THREE.Group();
+          const height = 7 + Math.random() * 8;
+          const width = 8 + Math.random() * 5;
+          const depth = 8 + Math.random() * 4;
+
+          const bodyGeo = new THREE.BoxGeometry(width, height, depth);
+          const bodyMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.8 });
+          const mesh = new THREE.Mesh(bodyGeo, bodyMat);
+          mesh.position.y = height / 2;
+          mesh.castShadow = true;
+          mesh.receiveShadow = true;
+          bldg.add(mesh);
+
+          const doorGeo = new THREE.BoxGeometry(1.8, 2.6, 0.2);
+          const blueMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.5 });
+          const door = new THREE.Mesh(doorGeo, blueMat);
+          door.position.set(0, 1.3, depth / 2 + 0.1);
+          bldg.add(door);
+
+          const winGeo = new THREE.BoxGeometry(1.2, 1.2, 0.2);
+          [-2.2, 2.2].forEach((xOffset) => {
+            const win = new THREE.Mesh(winGeo, blueMat);
+            win.position.set(xOffset, height * 0.65, depth / 2 + 0.1);
+            bldg.add(win);
+          });
+
+          const roofTrimGeo = new THREE.BoxGeometry(width + 0.4, 0.35, depth + 0.4);
+          const roofTrimMat = new THREE.MeshStandardMaterial({ color: 0xc2410c, roughness: 0.7 });
+          const roofTrim = new THREE.Mesh(roofTrimGeo, roofTrimMat);
+          roofTrim.position.y = height + 0.15;
+          bldg.add(roofTrim);
+
+          return bldg;
+        }
+
+        function createStreetLamp() {
+          const lamp = new THREE.Group();
+          const poleGeo = new THREE.CylinderGeometry(0.1, 0.14, 6.5, 6);
+          const poleMat = new THREE.MeshStandardMaterial({ color: 0x334155 });
+          const pole = new THREE.Mesh(poleGeo, poleMat);
+          pole.position.y = 3.25;
+          lamp.add(pole);
+
+          const lanternGeo = new THREE.BoxGeometry(0.5, 0.6, 0.5);
+          const lanternMat = new THREE.MeshStandardMaterial({
+            color: 0xfef08a,
+            emissive: 0xfacc15,
+            emissiveIntensity: 0.8
+          });
+          const lantern = new THREE.Mesh(lanternGeo, lanternMat);
+          lantern.position.set(0.6, 6.3, 0);
+          lamp.add(lantern);
+
+          return lamp;
+        }
+
+        function buildRoadSegment(zOffset) {
+          const group = new THREE.Group();
+
+          const roadGeo = new THREE.PlaneGeometry(ROAD_WIDTH, SEGMENT_LENGTH);
+          const roadMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.85 });
+          const road = new THREE.Mesh(roadGeo, roadMat);
+          road.rotation.x = -Math.PI / 2;
+          road.receiveShadow = true;
+          group.add(road);
+
+          const dashGeo = new THREE.PlaneGeometry(0.2, 3.5);
+          const dashMat = new THREE.MeshBasicMaterial({ color: 0xf8fafc });
+
+          [-1.8, 1.8].forEach((laneDividerX) => {
+            for (let z = -SEGMENT_LENGTH / 2 + 3; z < SEGMENT_LENGTH / 2; z += 7.5) {
+              const dash = new THREE.Mesh(dashGeo, dashMat);
+              dash.rotation.x = -Math.PI / 2;
+              dash.position.set(laneDividerX, 0.02, z);
+              group.add(dash);
+            }
+          });
+
+          const curbGeo = new THREE.BoxGeometry(0.6, 0.35, SEGMENT_LENGTH);
+          const curbMat = new THREE.MeshStandardMaterial({ color: 0xd90429, roughness: 0.8 });
+          const curbLeft = new THREE.Mesh(curbGeo, curbMat);
+          curbLeft.position.set(-ROAD_WIDTH / 2 - 0.3, 0.15, 0);
+          const curbRight = new THREE.Mesh(curbGeo, curbMat);
+          curbRight.position.set(ROAD_WIDTH / 2 + 0.3, 0.15, 0);
+          group.add(curbLeft, curbRight);
+
+          const vergeGeo = new THREE.PlaneGeometry(45, SEGMENT_LENGTH);
+          const vergeMat = new THREE.MeshStandardMaterial({ color: 0xfde047, roughness: 0.95 });
+          const vergeLeft = new THREE.Mesh(vergeGeo, vergeMat);
+          vergeLeft.rotation.x = -Math.PI / 2;
+          vergeLeft.position.set(-ROAD_WIDTH / 2 - 23, 0.05, 0);
+          vergeLeft.receiveShadow = true;
+          const vergeRight = new THREE.Mesh(vergeGeo, vergeMat);
+          vergeRight.rotation.x = -Math.PI / 2;
+          vergeRight.position.set(ROAD_WIDTH / 2 + 23, 0.05, 0);
+          vergeRight.receiveShadow = true;
+          group.add(vergeLeft, vergeRight);
+
+          for (let z = -SEGMENT_LENGTH / 2 + 10; z < SEGMENT_LENGTH / 2 - 10; z += 24) {
+            if (Math.random() > 0.4) {
+              const bldg = createTunisianBuilding();
+              bldg.position.set(-ROAD_WIDTH / 2 - 9 - Math.random() * 4, 0, z);
+              group.add(bldg);
+            } else {
+              const palm = createPalmTree();
+              palm.position.set(-ROAD_WIDTH / 2 - 3.5, 0, z);
+              group.add(palm);
+            }
+
+            if (Math.random() > 0.4) {
+              const bldg = createTunisianBuilding();
+              bldg.position.set(ROAD_WIDTH / 2 + 9 + Math.random() * 4, 0, z);
+              bldg.rotation.y = Math.PI;
+              group.add(bldg);
+            } else {
+              const palm = createPalmTree();
+              palm.position.set(ROAD_WIDTH / 2 + 3.5, 0, z);
+              group.add(palm);
+            }
+
+            const lamp = createStreetLamp();
+            lamp.position.set(ROAD_WIDTH / 2 + 1.2, 0, z + 8);
+            group.add(lamp);
+          }
+
+          group.position.z = zOffset;
+          scene.add(group);
+          return group;
+        }
+
+        function initRoadSystem() {
+          roadSegments = [];
+          for (let i = 0; i < NUM_SEGMENTS; i++) {
+            const z = -i * SEGMENT_LENGTH;
+            const segment = buildRoadSegment(z);
+            roadSegments.push(segment);
+          }
+        }
+
+        // --- 9. OBSTACLES & COLLECTIBLES SPAWNING ---
+        function createPothole() {
+          const group = new THREE.Group();
+          group.userData = { type: 'obstacle', subtype: 'pothole', radius: 1.25 };
+
+          const holeGeo = new THREE.CircleGeometry(1.2, 14);
+          const holeMat = new THREE.MeshBasicMaterial({ color: 0x090d16 });
+          const holeMesh = new THREE.Mesh(holeGeo, holeMat);
+          holeMesh.rotation.x = -Math.PI / 2;
+          holeMesh.position.y = 0.04;
+          group.add(holeMesh);
+
+          const rimGeo = new THREE.RingGeometry(1.15, 1.45, 12);
+          const rimMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 1.0 });
+          const rimMesh = new THREE.Mesh(rimGeo, rimMat);
+          rimMesh.rotation.x = -Math.PI / 2;
+          rimMesh.position.y = 0.05;
+          group.add(rimMesh);
+
+          const coneGeo = new THREE.ConeGeometry(0.3, 0.9, 8);
+          const coneMat = new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.5 });
+          const cone = new THREE.Mesh(coneGeo, coneMat);
+          cone.position.set(0.8, 0.45, 0.3);
+          cone.castShadow = true;
+          group.add(cone);
+
+          return group;
+        }
+
+        function createSpeedRadar() {
+          const group = new THREE.Group();
+          group.userData = { type: 'obstacle', subtype: 'radar', radius: 1.2 };
+
+          const poleGeo = new THREE.CylinderGeometry(0.12, 0.16, 3.2, 8);
+          const poleMat = new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.8, roughness: 0.2 });
+          const pole = new THREE.Mesh(poleGeo, poleMat);
+          pole.position.y = 1.6;
+          pole.castShadow = true;
+          group.add(pole);
+
+          const boxGeo = new THREE.BoxGeometry(0.9, 1.2, 0.9);
+          const boxMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.4 });
+          const box = new THREE.Mesh(boxGeo, boxMat);
+          box.position.y = 3.2;
+          box.castShadow = true;
+          group.add(box);
+
+          const lensGeo = new THREE.CylinderGeometry(0.2, 0.2, 0.2, 12);
+          lensGeo.rotateX(Math.PI / 2);
+          const lensMat = new THREE.MeshStandardMaterial({
+            color: 0xef4444,
+            emissive: 0xd90429,
+            emissiveIntensity: 0.9
+          });
+          const lens = new THREE.Mesh(lensGeo, lensMat);
+          lens.position.set(0, 3.2, 0.46);
+          group.add(lens);
+
+          const flashGeo = new THREE.BoxGeometry(0.5, 0.25, 0.1);
+          const flashMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+          const flash = new THREE.Mesh(flashGeo, flashMat);
+          flash.position.set(0, 3.6, 0.46);
+          group.add(flash);
+
+          return group;
+        }
+
+        function createMovingBarrier() {
+          const group = new THREE.Group();
+          group.userData = {
+            type: 'obstacle',
+            subtype: 'barrier',
+            radius: 1.35,
+            moving: true,
+            direction: Math.random() > 0.5 ? 1 : -1,
+            speed: 2.2 + Math.random() * 1.5,
+            minX: -4.5,
+            maxX: 4.5
+          };
+
+          const boardGeo = new THREE.BoxGeometry(2.4, 0.5, 0.2);
+          const boardMat = new THREE.MeshStandardMaterial({ color: 0xd90429, roughness: 0.5 });
+          const board = new THREE.Mesh(boardGeo, boardMat);
+          board.position.y = 0.8;
+          board.castShadow = true;
+          group.add(board);
+
+          [-0.6, 0.6].forEach((xOff) => {
+            const stripeGeo = new THREE.BoxGeometry(0.4, 0.52, 0.22);
+            const stripeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            const stripe = new THREE.Mesh(stripeGeo, stripeMat);
+            stripe.position.set(xOff, 0.8, 0);
+            group.add(stripe);
+          });
+
+          const legGeo = new THREE.CylinderGeometry(0.08, 0.08, 1.1, 6);
+          const legMat = new THREE.MeshStandardMaterial({ color: 0x1e293b });
+          [-0.9, 0.9].forEach((xOff) => {
+            const leg = new THREE.Mesh(legGeo, legMat);
+            leg.position.set(xOff, 0.45, 0);
+            group.add(leg);
+          });
+
+          return group;
+        }
+
+        function createPassenger() {
+          const group = new THREE.Group();
+          group.userData = { type: 'passenger', radius: 1.35, collected: false };
+
+          // Varied realistic human styles (clothes, skin tone, hair, accessories)
+          const variations = [
+            { shirt: 0x2563eb, pants: 0x1e293b, skin: 0xf5c396, hair: 0x18181b, hasChechia: false },
+            { shirt: 0xd97706, pants: 0x334155, skin: 0xfbd0b8, hair: 0x292524, hasChechia: false },
+            { shirt: 0xf8fafc, pants: 0x0f172a, skin: 0xf5c396, hair: 0xd90429, hasChechia: true },
+            { shirt: 0x059669, pants: 0x1e1b4b, skin: 0xfbd0b8, hair: 0x1c1917, hasChechia: false }
+          ];
+          const person = variations[Math.floor(Math.random() * variations.length)];
+
+          const skinMat = new THREE.MeshStandardMaterial({ color: person.skin, roughness: 0.65 });
+          const shirtMat = new THREE.MeshStandardMaterial({ color: person.shirt, roughness: 0.7 });
+          const pantsMat = new THREE.MeshStandardMaterial({ color: person.pants, roughness: 0.8 });
+          const shoeMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.9 });
+
+          // 1. Shoes & Feet
+          const shoeGeo = new THREE.BoxGeometry(0.22, 0.14, 0.38);
+          const leftShoe = new THREE.Mesh(shoeGeo, shoeMat);
+          leftShoe.position.set(-0.2, 0.07, 0.04);
+          const rightShoe = new THREE.Mesh(shoeGeo, shoeMat);
+          rightShoe.position.set(0.2, 0.07, 0.04);
+          group.add(leftShoe, rightShoe);
+
+          // 2. Legs with Pants
+          const legGeo = new THREE.CylinderGeometry(0.12, 0.1, 0.85, 8);
+          const leftLeg = new THREE.Mesh(legGeo, pantsMat);
+          leftLeg.position.set(-0.2, 0.52, 0);
+          leftLeg.castShadow = true;
+          const rightLeg = new THREE.Mesh(legGeo, pantsMat);
+          rightLeg.position.set(0.2, 0.52, 0);
+          rightLeg.castShadow = true;
+          group.add(leftLeg, rightLeg);
+
+          // 3. Pelvis / Hips
+          const hipsGeo = new THREE.BoxGeometry(0.58, 0.22, 0.32);
+          const hips = new THREE.Mesh(hipsGeo, pantsMat);
+          hips.position.set(0, 0.95, 0);
+          group.add(hips);
+
+          // 4. Torso with Shirt / Jacket
+          const torsoGeo = new THREE.BoxGeometry(0.64, 0.78, 0.36);
+          const torso = new THREE.Mesh(torsoGeo, shirtMat);
+          torso.position.set(0, 1.42, 0);
+          torso.castShadow = true;
+          group.add(torso);
+
+          // Collar / Neck
+          const neckGeo = new THREE.CylinderGeometry(0.12, 0.13, 0.18, 8);
+          const neck = new THREE.Mesh(neckGeo, skinMat);
+          neck.position.set(0, 1.86, 0);
+          group.add(neck);
+
+          // 5. Head
+          const headGeo = new THREE.BoxGeometry(0.42, 0.46, 0.42);
+          const head = new THREE.Mesh(headGeo, skinMat);
+          head.position.set(0, 2.12, 0);
+          head.castShadow = true;
+          group.add(head);
+
+          // Facial Features (Expressive Eyes & Smile)
+          const eyeGeo = new THREE.BoxGeometry(0.06, 0.06, 0.04);
+          const eyeMat = new THREE.MeshBasicMaterial({ color: 0x111827 });
+          const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
+          leftEye.position.set(-0.11, 2.15, -0.22);
+          const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
+          rightEye.position.set(0.11, 2.15, -0.22);
+          group.add(leftEye, rightEye);
+
+          // Hair or Tunisian Chechia
+          if (person.hasChechia) {
+            const chechiaGeo = new THREE.CylinderGeometry(0.24, 0.26, 0.2, 12);
+            const chechiaMat = new THREE.MeshStandardMaterial({ color: 0xd90429, roughness: 0.4 });
+            const chechia = new THREE.Mesh(chechiaGeo, chechiaMat);
+            chechia.position.set(0, 2.38, 0);
+            group.add(chechia);
+          } else {
+            const hairGeo = new THREE.BoxGeometry(0.46, 0.2, 0.46);
+            const hairMat = new THREE.MeshStandardMaterial({ color: person.hair, roughness: 0.8 });
+            const hair = new THREE.Mesh(hairGeo, hairMat);
+            hair.position.set(0, 2.38, -0.02);
+            group.add(hair);
+          }
+
+          // 6. Left Arm (Downwards holding travel bag)
+          const armGeo = new THREE.CylinderGeometry(0.08, 0.07, 0.65, 8);
+          const leftArm = new THREE.Mesh(armGeo, shirtMat);
+          leftArm.position.set(-0.42, 1.38, 0);
+          leftArm.rotation.z = 0.15;
+          const leftHandGeo = new THREE.SphereGeometry(0.08, 6, 6);
+          const leftHand = new THREE.Mesh(leftHandGeo, skinMat);
+          leftHand.position.set(-0.47, 1.02, 0);
+          group.add(leftArm, leftHand);
+
+          // 7. Right Arm - Animated Waving Arm!
+          const wavingArmPivot = new THREE.Group();
+          wavingArmPivot.position.set(0.38, 1.7, 0);
+
+          const rightArmMesh = new THREE.Mesh(armGeo, shirtMat);
+          rightArmMesh.position.set(0.18, 0.25, 0);
+          rightArmMesh.rotation.z = -Math.PI / 4;
+          wavingArmPivot.add(rightArmMesh);
+
+          const rightHandMesh = new THREE.Mesh(leftHandGeo, skinMat);
+          rightHandMesh.position.set(0.42, 0.5, 0);
+          wavingArmPivot.add(rightHandMesh);
+
+          group.add(wavingArmPivot);
+          group.userData.wavingArm = wavingArmPivot;
+
+          // 8. Travel Bag / Luggage
+          const bagGeo = new THREE.BoxGeometry(0.38, 0.48, 0.24);
+          const bagMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.7 });
+          const bag = new THREE.Mesh(bagGeo, bagMat);
+          bag.position.set(-0.46, 0.85, 0);
+          group.add(bag);
+
+          // 9. Floating Hailing Marker / Callout
+          const hailGeo = new THREE.SphereGeometry(0.16, 8, 8);
+          const hailMat = new THREE.MeshBasicMaterial({ color: 0xfacc15 });
+          const marker = new THREE.Mesh(hailGeo, hailMat);
+          marker.position.set(0, 2.75, 0);
+          group.add(marker);
+
+          return group;
+        }
+
+        function createCoin() {
+          const group = new THREE.Group();
+          group.userData = { type: 'coin', radius: 1.1, collected: false, rotSpeed: 3.5 };
+
+          const coinGeo = new THREE.CylinderGeometry(0.5, 0.5, 0.12, 16);
+          coinGeo.rotateX(Math.PI / 2);
+          const coinMat = new THREE.MeshStandardMaterial({
+            color: 0xfacc15,
+            metalness: 0.85,
+            roughness: 0.2,
+            emissive: 0xca8a04,
+            emissiveIntensity: 0.35
+          });
+          const coinMesh = new THREE.Mesh(coinGeo, coinMat);
+          coinMesh.position.y = 1.0;
+          coinMesh.castShadow = true;
+          group.add(coinMesh);
+
+          return group;
+        }
+
+        function spawnBatchAt(zDistance) {
+          const numLanesWithObstacle = Math.random() < 0.4 ? 2 : 1;
+          const availableLanes = [0, 1, 2].sort(() => Math.random() - 0.5);
+
+          for (let i = 0; i < numLanesWithObstacle; i++) {
+            const laneIdx = availableLanes[i];
+            const randType = Math.random();
+            let obs;
+
+            if (randType < 0.45) {
+              obs = createPothole();
+            } else if (randType < 0.75) {
+              obs = createSpeedRadar();
+            } else {
+              obs = createMovingBarrier();
+            }
+
+            obs.position.set(LANES[laneIdx], 0, zDistance);
+            scene.add(obs);
+            activeObstacles.push(obs);
+          }
+
+          const freeLanes = availableLanes.slice(numLanesWithObstacle);
+          freeLanes.forEach((laneIdx) => {
+            const roll = Math.random();
+            if (roll < 0.45) {
+              const pass = createPassenger();
+              pass.position.set(LANES[laneIdx], 0, zDistance);
+              scene.add(pass);
+              activeCollectibles.push(pass);
+            } else if (roll < 0.9) {
+              for (let c = 0; c < 3; c++) {
+                const coin = createCoin();
+                coin.position.set(LANES[laneIdx], 0, zDistance + c * 3.5);
+                scene.add(coin);
+                activeCollectibles.push(coin);
+              }
+            }
+          });
+        }
+
+        function clearAllDynamicObjects() {
+          activeObstacles.forEach((obj) => scene.remove(obj));
+          activeObstacles = [];
+          activeCollectibles.forEach((obj) => scene.remove(obj));
+          activeCollectibles = [];
+        }
+
+        // --- 10. GAMEPLAY LOGIC & CONTROLS ---
+        function switchLane(dir) {
+          if (gameState !== 'PLAYING') return;
+          const newLane = currentLane + dir;
+          if (newLane >= 0 && newLane < LANES.length) {
+            currentLane = newLane;
+            targetX = LANES[currentLane];
+          }
+        }
+
+        function triggerHornAction() {
+          sound.playHorn();
+          if (playerTaxiGroup) {
+            playerTaxiGroup.position.y += 0.15;
+          }
+          triggerFlavorToast('تيت تيت! (Klaxon)');
+        }
+
+        window.addEventListener('keydown', (e) => {
+          if (gameState === 'MENU' && (e.code === 'Enter' || e.code === 'Space')) {
+            startGame();
+            return;
+          }
+
+          if (gameState === 'GAMEOVER' && (e.code === 'Enter' || e.code === 'Space')) {
+            startGame();
+            return;
+          }
+
+          if (gameState === 'PLAYING') {
+            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+              switchLane(-1);
+            } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+              switchLane(1);
+            } else if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') {
+              currentSpeed = Math.min(currentSpeed + 8, maxSpeed + 15);
+            } else if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') {
+              currentSpeed = Math.max(currentSpeed - 12, 18);
+            } else if (e.key === 'h' || e.key === 'H' || e.code === 'Space') {
+              triggerHornAction();
+            }
+          }
+        });
+
+        document.getElementById('btn-steer-left').addEventListener('click', () => switchLane(-1));
+        document.getElementById('btn-steer-right').addEventListener('click', () => switchLane(1));
+        document.getElementById('btn-horn').addEventListener('click', triggerHornAction);
+
+        document.getElementById('btn-sound-toggle').addEventListener('click', () => {
+          const unmuted = sound.toggleMute();
+          document.getElementById('sound-icon').innerText = unmuted ? '🔊' : '🔇';
+        });
+
+        // --- 11. GAME LIFECYCLE: START, UPDATE, GAME OVER ---
+        function startGame() {
+          sound.init();
+          sound.startEngine();
+
+          const engLvl = playerData.upgrades.engine;
+          baseSpeed = 38 + engLvl * 4;
+          maxSpeed = 68 + engLvl * 6;
+          laneSwitchSpeed = 10 + playerData.upgrades.handling * 2.5;
+
+          hasShield = playerData.upgrades.shield > 0;
+          updateShieldHUD();
+
+          currentLane = 1;
+          targetX = LANES[currentLane];
+          if (playerTaxiGroup) {
+            playerTaxiGroup.position.set(targetX, 0, 0);
+            playerTaxiGroup.rotation.set(0, 0, 0);
+          }
+
+          score = 0;
+          passengersCollectedRun = 0;
+          goldCollectedRun = 0;
+          xpGainedRun = 0;
+          distanceTraveled = 0;
+          currentSpeed = baseSpeed;
+
+          clearAllDynamicObjects();
+
+          for (let z = -40; z > -260; z -= 38) {
+            spawnBatchAt(z);
+          }
+
+          gameState = 'PLAYING';
+
+          document.getElementById('start-menu').style.display = 'none';
+          document.getElementById('game-over-modal').style.display = 'none';
+          document.getElementById('shop-modal').style.display = 'none';
+          document.getElementById('auth-modal').style.display = 'none';
+          document.getElementById('hud').style.display = 'flex';
+          document.getElementById('bottom-dock').style.display = 'flex';
+
+          updateHUD();
+          triggerFlavorToast('انطلق يا شيفور! (Yalla Chiffour!)');
+        }
+
+        function updateShieldHUD() {
+          const el = document.getElementById('hud-shield-status');
+          const txt = document.getElementById('hud-shield-text');
+          if (hasShield) {
+            el.className = 'shield-status';
+            txt.innerText = 'SHIELD: ARMORED';
+          } else {
+            el.className = 'shield-status shield-inactive';
+            txt.innerText = 'SHIELD: NONE';
+          }
+        }
+
+        function triggerGameOver(reasonText) {
+          gameState = 'GAMEOVER';
+          sound.stopEngine();
+          sound.playCrash();
+
+          // Calculate final run XP
+          const distanceXP = Math.floor(distanceTraveled * 0.4);
+          const passengerXP = passengersCollectedRun * 60;
+          const coinXP = goldCollectedRun * 6;
+          xpGainedRun = distanceXP + passengerXP + coinXP;
+
+          // Apply XP and check level 5 cap
+          const xpResult = addDriverXP(xpGainedRun);
+
+          playerData.gold += goldCollectedRun;
+          playerData.passengersCount += passengersCollectedRun;
+          if (score > playerData.highScore) playerData.highScore = score;
+          if (distanceTraveled > playerData.bestDistance) playerData.bestDistance = distanceTraveled;
+          saveData(playerData);
+
+          // Dynamically record score in Leaderboard Service (Local + Supabase ready)
+          if (typeof LeaderboardService !== 'undefined') {
+            LeaderboardService.recordScore(score, {
+              passengers: passengersCollectedRun,
+              distance: distanceTraveled
+            });
+          }
+
+          // Populate Game Over Modal
+          document.getElementById('game-over-reason').innerText = reasonText || 'Accident sur la route!';
+          document.getElementById('stat-final-score').innerText = Math.floor(score).toLocaleString();
+          document.getElementById('stat-final-passengers').innerText = passengersCollectedRun;
+          document.getElementById('stat-final-distance').innerText = (distanceTraveled / 1000).toFixed(2) + ' km';
+          document.getElementById('stat-final-xp').innerText = '+' + xpGainedRun + ' XP';
+          document.getElementById('stat-final-gold').innerText = '+' + goldCollectedRun + ' 🪙';
+
+          // Level 5 cap alert
+          const gateAlert = document.getElementById('gameover-level5-alert');
+          if (!currentUser && playerData.xp >= 5200) {
+            gateAlert.style.display = 'block';
+          } else {
+            gateAlert.style.display = 'none';
+          }
+
+          document.getElementById('hud').style.display = 'none';
+          document.getElementById('bottom-dock').style.display = 'none';
+          document.getElementById('game-over-modal').style.display = 'flex';
+          updateAuthUI();
+        }
+
+        function updateHUD() {
+          document.getElementById('hud-score').innerText = Math.floor(score);
+          document.getElementById('hud-passengers').innerText = passengersCollectedRun;
+          document.getElementById('hud-gold').innerText = playerData.gold + goldCollectedRun;
+          document.getElementById('hud-speed').innerText = Math.floor(currentSpeed);
+
+          const rank = getCurrentRank(playerData.xp);
+          const isCapped = !currentUser && playerData.xp >= 5200;
+          document.getElementById('hud-rank-text').innerText = isCapped ? 'Lvl 5 (Cap Invité)' : `Lvl ${rank.level}`;
+        }
+
+        // --- 12. MAIN ANIMATION & SIMULATION LOOP ---
+        let lastTime = performance.now();
+
+        function animate(now) {
+          requestAnimationFrame(animate);
+
+          const rawDt = (now - lastTime) / 1000;
+          const dt = Math.min(rawDt, 0.05);
+          lastTime = now;
+
+          if (gameState === 'PLAYING') {
+            currentSpeed = Math.min(currentSpeed + dt * 0.4, maxSpeed);
+            const moveDelta = currentSpeed * dt;
+            distanceTraveled += moveDelta;
+
+            const seatMultiplier = 1 + (playerData.upgrades.seats - 1) * 0.25;
+            score += moveDelta * 1.8 * seatMultiplier;
+
+            sound.updateEnginePitch(currentSpeed / maxSpeed);
+
+            // 1. Smooth Lane Shift & Car Sway
+            if (playerTaxiGroup) {
+              const dx = targetX - playerTaxiGroup.position.x;
+              playerTaxiGroup.position.x += dx * Math.min(dt * laneSwitchSpeed, 1.0);
+
+              const targetRoll = -dx * 0.065;
+              playerTaxiGroup.rotation.z += (targetRoll - playerTaxiGroup.rotation.z) * 0.15;
+              playerTaxiGroup.position.y = Math.sin(now * 0.015) * 0.04;
+
+              wheels.forEach((w) => {
+                w.rotation.x -= currentSpeed * dt * 2.2;
+              });
+            }
+
+            // 2. Camera Chase Damping
+            if (camera && playerTaxiGroup) {
+              const targetCamX = playerTaxiGroup.position.x * 0.45;
+              camera.position.x += (targetCamX - camera.position.x) * 0.12;
+            }
+
+            // 3. Move Road Segments continuously
+            roadSegments.forEach((segment) => {
+              segment.position.z += moveDelta;
+              if (segment.position.z > SEGMENT_LENGTH) {
+                let minZ = 0;
+                roadSegments.forEach((s) => {
+                  if (s.position.z < minZ) minZ = s.position.z;
+                });
+                segment.position.z = minZ - SEGMENT_LENGTH;
+              }
+            });
+
+            // 4. Move Obstacles & Check Collisions
+            for (let i = activeObstacles.length - 1; i >= 0; i--) {
+              const obs = activeObstacles[i];
+              obs.position.z += moveDelta;
+
+              if (obs.userData.moving) {
+                obs.position.x += obs.userData.direction * obs.userData.speed * dt;
+                if (obs.position.x > obs.userData.maxX) {
+                  obs.position.x = obs.userData.maxX;
+                  obs.userData.direction = -1;
+                } else if (obs.position.x < obs.userData.minX) {
+                  obs.position.x = obs.userData.minX;
+                  obs.userData.direction = 1;
+                }
+              }
+
+              if (playerTaxiGroup) {
+                const dz = Math.abs(obs.position.z - playerTaxiGroup.position.z);
+                const dx = Math.abs(obs.position.x - playerTaxiGroup.position.x);
+
+                if (dz < 2.0 && dx < obs.userData.radius) {
+                  if (hasShield) {
+                    hasShield = false;
+                    updateShieldHUD();
+                    sound.playShieldAbsorb();
+                    triggerFlavorToast('🛡️ الدرع منع الحادث!');
+                    scene.remove(obs);
+                    activeObstacles.splice(i, 1);
+                    continue;
+                  } else {
+                    let reason = 'ضربت في حفرة خايبة!';
+                    if (obs.userData.subtype === 'radar') reason = 'فلاش رادار السرعة قصّ عليك!';
+                    if (obs.userData.subtype === 'barrier') reason = 'صدمت في الحاجز الأمني!';
+                    triggerGameOver(reason);
+                    break;
+                  }
+                }
+              }
+
+              if (obs.position.z > 25) {
+                scene.remove(obs);
+                activeObstacles.splice(i, 1);
+              }
+            }
+
+            // 5. Move Collectibles & Check Pickups
+            for (let i = activeCollectibles.length - 1; i >= 0; i--) {
+              const col = activeCollectibles[i];
+              col.position.z += moveDelta;
+
+              if (col.userData.type === 'coin') {
+                col.rotation.y += col.userData.rotSpeed * dt;
+              } else if (col.userData.type === 'passenger' && col.userData.wavingArm) {
+                // Lifelike human arm waving animation hailing the taxi
+                col.userData.wavingArm.rotation.z = Math.sin(now * 0.009 + col.position.z * 0.2) * 0.4 - 0.2;
+                col.userData.wavingArm.rotation.x = Math.cos(now * 0.007 + col.position.z * 0.1) * 0.15;
+              }
+
+              if (playerTaxiGroup) {
+                const dz = Math.abs(col.position.z - playerTaxiGroup.position.z);
+                const dx = Math.abs(col.position.x - playerTaxiGroup.position.x);
+
+                if (dz < 2.4 && dx < col.userData.radius) {
+                  if (col.userData.type === 'passenger') {
+                    passengersCollectedRun++;
+                    const bonusKoursa = 250 * seatMultiplier;
+                    const bonusGold = 15;
+                    score += bonusKoursa;
+                    goldCollectedRun += bonusGold;
+                    sound.playPassengerPickup();
+                    triggerFlavorToast();
+                  } else if (col.userData.type === 'coin') {
+                    goldCollectedRun += 5;
+                    score += 50;
+                    sound.playCoin();
+                  }
+
+                  scene.remove(col);
+                  activeCollectibles.splice(i, 1);
+                  updateHUD();
+                  continue;
+                }
+              }
+
+              if (col.position.z > 25) {
+                scene.remove(col);
+                activeCollectibles.splice(i, 1);
+              }
+            }
+
+            // 6. Spawn Ahead
+            let minObstacleZ = 0;
+            activeObstacles.forEach((o) => {
+              if (o.position.z < minObstacleZ) minObstacleZ = o.position.z;
+            });
+            if (minObstacleZ > -220) {
+              spawnBatchAt(minObstacleZ - 36);
+            }
+
+            updateHUD();
+
+          } else if (gameState === 'MENU' || gameState === 'GARAGE') {
+            if (playerTaxiGroup) {
+              playerTaxiGroup.rotation.y = Math.sin(now * 0.001) * 0.25;
+              playerTaxiGroup.position.y = Math.sin(now * 0.002) * 0.05;
+            }
+          }
+
+          renderer.render(scene, camera);
+        }
+
+        // --- 13. SHOP / GARAGE & DRIVER PERMIS LOGIC ---
+        const UPGRADES_CONFIG = {
+          engine: {
+            title: 'Moteur V6 Turbo',
+            desc: 'Increases top speed & road acceleration.',
+            maxLevel: 5,
+            costs: [0, 100, 250, 500, 900]
+          },
+          handling: {
+            title: 'Volant Assisté',
+            desc: 'Faster, sharper 3-lane swerve response.',
+            maxLevel: 5,
+            costs: [0, 80, 200, 400, 750]
+          },
+          seats: {
+            title: 'Saloun Velours Lux',
+            desc: 'Luxury passenger seats earn +25% Koursa score.',
+            maxLevel: 5,
+            costs: [0, 120, 300, 600, 1100]
+          },
+          shield: {
+            title: 'Pare-Choc Blindé',
+            desc: 'Reinforced bumper absorbs 1 obstacle impact!',
+            maxLevel: 3,
+            costs: [0, 150, 350, 700]
+          }
+        };
+
+        function renderShopUI() {
+          document.getElementById('shop-gold-display').innerText = playerData.gold;
+
+          // 1. Upgrades Tab
+          const upContainer = document.getElementById('upgrades-container');
+          upContainer.innerHTML = '';
+
+          Object.keys(UPGRADES_CONFIG).forEach((key) => {
+            const config = UPGRADES_CONFIG[key];
+            const currentLvl = playerData.upgrades[key] || 1;
+            const nextLvl = currentLvl + 1;
+            const isMax = currentLvl >= config.maxLevel;
+            const cost = isMax ? 0 : config.costs[currentLvl];
+
+            const card = document.createElement('div');
+            card.className = 'shop-item-card';
+
+            let dotsHtml = '<div class="item-level-dots">';
+            for (let i = 1; i <= config.maxLevel; i++) {
+              dotsHtml += `<div class="level-dot ${i <= currentLvl ? 'filled' : ''}"></div>`;
+            }
+            dotsHtml += '</div>';
+
+            card.innerHTML = `
+              <span class="item-badge">LVL ${currentLvl} / ${config.maxLevel}</span>
+              <div class="item-title">${config.title}</div>
+              <div class="item-desc">${config.desc}</div>
+              ${dotsHtml}
+              <button class="buy-btn" ${isMax || playerData.gold < cost ? 'disabled' : ''} id="btn-up-${key}">
+                ${isMax ? 'MAX LEVEL' : `Upgrade (${cost} 🪙)`}
+              </button>
+            `;
+            upContainer.appendChild(card);
+
+            const btn = card.querySelector(`#btn-up-${key}`);
+            if (btn && !isMax) {
+              btn.addEventListener('click', () => {
+                if (playerData.gold >= cost) {
+                  playerData.gold -= cost;
+                  playerData.upgrades[key] = nextLvl;
+                  saveData(playerData);
+                  sound.playCoin();
+                  showNotification(`${config.title} upgraded to Level ${nextLvl}!`);
+                  renderShopUI();
+                }
+              });
+            }
+          });
+
+          // 2. Skins Tab
+          const skinsContainer = document.getElementById('skins-container');
+          skinsContainer.innerHTML = '';
+
+          Object.keys(SKINS).forEach((skinKey) => {
+            const skin = SKINS[skinKey];
+            const isUnlocked = playerData.unlockedSkins.includes(skinKey);
+            const isEquipped = playerData.activeSkin === skinKey;
+
+            const card = document.createElement('div');
+            card.className = 'shop-item-card';
+
+            card.innerHTML = `
+              <div class="skin-preview-swatch" style="background: ${skin.swatch};">${skin.name}</div>
+              <div class="item-title">${skin.name}</div>
+              <div class="item-desc">${isUnlocked ? 'Available in your garage.' : `Unlock for ${skin.price.toLocaleString()} Gold coins.`}</div>
+              <button class="buy-btn" ${isEquipped ? 'disabled' : ''} id="btn-skin-${skinKey}">
+                ${isEquipped ? 'EQUIPPED' : isUnlocked ? 'EQUIP' : `BUY (${skin.price.toLocaleString()} 🪙)`}
+              </button>
+            `;
+            skinsContainer.appendChild(card);
+
+            const btn = card.querySelector(`#btn-skin-${skinKey}`);
+            btn.addEventListener('click', () => {
+              if (isUnlocked) {
+                playerData.activeSkin = skinKey;
+                saveData(playerData);
+                updateTaxiSkin();
+                sound.playCoin();
+                renderShopUI();
+              } else if (playerData.gold >= skin.price) {
+                playerData.gold -= skin.price;
+                playerData.unlockedSkins.push(skinKey);
+                playerData.activeSkin = skinKey;
+                saveData(playerData);
+                updateTaxiSkin();
+                sound.playCoin();
+                showNotification(`Unlocked & equipped ${skin.name}!`);
+                renderShopUI();
+              }
+            });
+          });
+
+          // 3. Permis & Rank Tab (Replacing old simulated bank)
+          renderLicenseTab();
+        }
+
+        function renderLicenseTab() {
+          const container = document.getElementById('license-card-container');
+          const currentRank = getCurrentRank(playerData.xp);
+          const isGuest = !currentUser;
+          const isCapped = isGuest && playerData.xp >= 5200;
+
+          const nextRank = RANKS.find((r) => r.level === currentRank.level + 1);
+          let progressPercent = 100;
+          let xpNeededText = 'Max Rank Reached';
+
+          if (nextRank) {
+            const span = nextRank.minXP - currentRank.minXP;
+            const currentInSpan = playerData.xp - currentRank.minXP;
+            progressPercent = Math.min(Math.max((currentInSpan / span) * 100, 0), 100);
+            xpNeededText = `${playerData.xp} / ${nextRank.minXP} XP`;
+          }
+
+          const driverName = currentUser ? currentUser.username : 'Invité (Guest Driver)';
+          const driverStation = currentUser ? currentUser.region : 'Non enregistré';
+          const matricule = currentUser ? currentUser.matricule : 'PROVISOIRE-GUEST';
+
+          container.innerHTML = `
+            <div class="license-card">
+              <div class="license-body">
+                <div class="license-avatar">${currentUser ? '🚖' : '👤'}</div>
+                <div class="license-info">
+                  <div class="license-name">${driverName}</div>
+                  <div class="license-sub">${driverStation} · N° ${matricule}</div>
+                  <div style="margin-top: 6px; display: flex; align-items: center; justify-content: space-between;">
+                    <span style="font-weight: 800; color: #f59e0b; font-size: 14px;">
+                      NIVEAU ${currentRank.level} : ${currentRank.title} (${currentRank.arabic})
+                    </span>
+                    <span style="font-size: 12px; color: #94a3b8;">${xpNeededText}</span>
+                  </div>
+                  <div class="xp-progress-bar-bg">
+                    <div class="xp-progress-bar-fill" style="width: ${progressPercent}%;"></div>
+                  </div>
+                  <div style="font-size: 11px; color: #64748b;">Bonus actif: ${currentRank.perk}</div>
+                </div>
+              </div>
+            </div>
+
+            ${
+              isCapped
+                ? `
+              <div class="rank-gate-banner">
+                <div style="font-weight: 800; color: #ef4444; font-size: 15px; margin-bottom: 4px;">
+                  ⚠️ RANG MAXIMUM INVITÉ ATTEINT (NIVEAU 5)
+                </div>
+                <div style="font-size: 13px; color: #cbd5e1; margin-bottom: 12px;">
+                  Pour passer au <strong>Niveau 6 (Capitaine Louage)</strong> et débloquer les Rangs d'Élite 6 à 10, le Syndicat exige un compte Chauffeur enregistré.
+                </div>
+                <button class="primary-btn" id="btn-unlock-rank-tab" style="padding: 10px 20px; font-size: 14px;">
+                  🔑 Se Connecter / Créer un Compte (+200 🪙)
+                </button>
+              </div>
+            `
+                : isGuest
+                ? `
+              <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.05); padding: 12px 16px; border-radius: 12px; margin-bottom: 14px;">
+                <div>
+                  <div style="font-weight: 700; font-size: 13px; color: #f8fafc;">Compte Chauffeur non connecté</div>
+                  <div style="font-size: 11px; color: #94a3b8;">La progression est limitée au Niveau 5 pour les invités.</div>
+                </div>
+                <button class="secondary-btn" id="btn-login-from-tab" style="width: auto; margin-top: 0; padding: 6px 14px; font-size: 13px;">
+                  Connexion / Signup
+                </button>
+              </div>
+            `
+                : `
+              <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.3); padding: 12px 16px; border-radius: 12px; margin-bottom: 14px;">
+                <div>
+                  <div style="font-weight: 800; font-size: 13px; color: #4ade80;">✓ Permis Officiel Enregistré</div>
+                  <div style="font-size: 11px; color: #86efac;">Tous les Rangs 6 à 10 sont débloqués pour votre compte !</div>
+                </div>
+                <button class="secondary-btn" id="btn-logout-from-tab" style="width: auto; margin-top: 0; padding: 6px 12px; font-size: 12px; border-color: rgba(239, 68, 68, 0.4); color: #fca5a5;">
+                  Déconnexion
+                </button>
+              </div>
+            `
+            }
+          `;
+
+          // Button listeners in tab
+          const unlockBtn = document.getElementById('btn-unlock-rank-tab');
+          if (unlockBtn) unlockBtn.addEventListener('click', openAuthModal);
+
+          const loginTabBtn = document.getElementById('btn-login-from-tab');
+          if (loginTabBtn) loginTabBtn.addEventListener('click', openAuthModal);
+
+          const logoutTabBtn = document.getElementById('btn-logout-from-tab');
+          if (logoutTabBtn) {
+            logoutTabBtn.addEventListener('click', () => {
+              saveSession(null);
+              showNotification('Déconnecté du compte Chauffeur.');
+              renderLicenseTab();
+            });
+          }
+
+          // Render ranks hierarchy
+          const listContainer = document.getElementById('ranks-hierarchy-list');
+          listContainer.innerHTML = '';
+
+          RANKS.forEach((rank) => {
+            const isUnlocked = playerData.xp >= rank.minXP;
+            const isCurrent = currentRank.level === rank.level;
+            const isLockedDueToAuth = rank.level > 5 && isGuest;
+
+            const row = document.createElement('div');
+            row.style.background = isCurrent
+              ? 'rgba(245, 158, 11, 0.18)'
+              : 'rgba(255, 255, 255, 0.04)';
+            row.style.border = isCurrent
+              ? '1px solid rgba(245, 158, 11, 0.5)'
+              : '1px solid rgba(255, 255, 255, 0.08)';
+            row.style.borderRadius = '10px';
+            row.style.padding = '10px 14px';
+            row.style.display = 'flex';
+            row.style.justifyContent = 'space-between';
+            row.style.alignItems = 'center';
+
+            row.innerHTML = `
+              <div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <strong style="color: ${isCurrent ? '#f59e0b' : '#f8fafc'}; font-size: 14px;">
+                    Lvl ${rank.level}: ${rank.title} (${rank.arabic})
+                  </strong>
+                  ${isCurrent ? '<span class="tunisia-badge" style="padding: 1px 6px; font-size: 10px;">RANG ACTUEL</span>' : ''}
+                  ${isLockedDueToAuth ? '<span class="rank-locked-tag">🔒 LOGIN REQUIS</span>' : ''}
+                </div>
+                <div style="font-size: 12px; color: #94a3b8; margin-top: 2px;">
+                  ${rank.perk} · ${rank.minXP} XP
+                </div>
+              </div>
+              <span style="font-size: 16px;">
+                ${isCurrent ? '⭐' : isUnlocked ? '✓' : isLockedDueToAuth ? '🔒' : '⏳'}
+              </span>
+            `;
+            listContainer.appendChild(row);
+          });
+        }
+
+        // Shop Tabs Switching
+        document.querySelectorAll('.shop-tab').forEach((tab) => {
+          tab.addEventListener('click', () => {
+            document.querySelectorAll('.shop-tab').forEach((t) => t.classList.remove('active'));
+            document.querySelectorAll('.shop-tab-content').forEach((c) => (c.style.display = 'none'));
+            tab.classList.add('active');
+            const target = tab.getAttribute('data-tab');
+            document.getElementById('tab-' + target).style.display = 'block';
+            if (target === 'license') renderLicenseTab();
+          });
+        });
+
+        // --- 14. LOGIN & SIGNUP AUTH LOGIC ---
+        function openAuthModal() {
+          document.getElementById('auth-modal').style.display = 'flex';
+          document.getElementById('auth-error-msg').style.display = 'none';
+        }
+
+        function closeAuthModal() {
+          document.getElementById('auth-modal').style.display = 'none';
+        }
+
+        function updateAuthUI() {
+          const rank = getCurrentRank(playerData.xp);
+          const isGuest = !currentUser;
+
+          // Start Menu badge & Auth Button
+          const startBadge = document.getElementById('start-driver-status-badge');
+          const startLabel = document.getElementById('start-driver-label');
+          const startAvatar = document.getElementById('start-driver-avatar');
+          const mainAuthBtn = document.getElementById('btn-open-auth-main');
+          const mainAuthBtnText = document.getElementById('auth-main-btn-text');
+
+          if (currentUser) {
+            startBadge.style.borderColor = '#10b981';
+            startBadge.style.color = '#34d399';
+            startAvatar.innerText = '🚖';
+            startLabel.innerText = `${currentUser.username} (Lvl ${rank.level})`;
+            // Hide the login/signup button completely once signed in
+            if (mainAuthBtn) mainAuthBtn.style.display = 'none';
+          } else {
+            startBadge.style.borderColor = 'rgba(245, 158, 11, 0.4)';
+            startBadge.style.color = '#fbbf24';
+            startAvatar.innerText = '👤';
+            startLabel.innerText = `Invité (Lvl ${rank.level} · Max 5)`;
+            // Visible only for guest drivers
+            if (mainAuthBtn) {
+              mainAuthBtn.style.display = 'flex';
+              if (mainAuthBtnText) mainAuthBtnText.innerText = 'Connexion / Inscription Chauffeur';
+            }
+          }
+
+          // HUD badge
+          const hudBadge = document.getElementById('hud-driver-rank-badge');
+          const hudText = document.getElementById('hud-rank-text');
+          const isCapped = isGuest && playerData.xp >= 5200;
+          hudText.innerText = isCapped ? 'Lvl 5 (Cap Invité)' : `Lvl ${rank.level}`;
+        }
+
+        // Toggle Auth Tabs (Login vs Signup)
+        const tabLogin = document.getElementById('tab-btn-login');
+        const tabSignup = document.getElementById('tab-btn-signup');
+        const formLogin = document.getElementById('form-login');
+        const formSignup = document.getElementById('form-signup');
+        const authAlert = document.getElementById('auth-error-msg');
+
+        tabLogin.addEventListener('click', () => {
+          tabLogin.classList.add('active');
+          tabSignup.classList.remove('active');
+          formLogin.style.display = 'block';
+          formSignup.style.display = 'none';
+          authAlert.style.display = 'none';
+        });
+
+        tabSignup.addEventListener('click', () => {
+          tabSignup.classList.add('active');
+          tabLogin.classList.remove('active');
+          formLogin.style.display = 'none';
+          formSignup.style.display = 'block';
+          authAlert.style.display = 'none';
+        });
+
+        // Sign Up submission
+        formSignup.addEventListener('submit', (e) => {
+          e.preventDefault();
+          const username = document.getElementById('signup-username').value.trim();
+          const region = document.getElementById('signup-region').value;
+          const password = document.getElementById('signup-password').value;
+
+          if (!username || username.length < 3) {
+            authAlert.innerText = 'Veuillez saisir un nom d\'au moins 3 caractères.';
+            authAlert.style.display = 'block';
+            return;
+          }
+
+          if (!password || password.length < 4) {
+            authAlert.innerText = 'Le mot de passe doit comporter au moins 4 caractères.';
+            authAlert.style.display = 'block';
+            return;
+          }
+
+          const accounts = loadAccounts();
+          const existing = accounts.find((a) => a.username.toLowerCase() === username.toLowerCase());
+          if (existing) {
+            authAlert.innerText = 'Ce nom de chauffeur est déjà enregistré au syndicat.';
+            authAlert.style.display = 'block';
+            return;
+          }
+
+          const matricule = 'TN-' + Math.floor(1000 + Math.random() * 9000);
+          const newUser = {
+            username,
+            region,
+            password,
+            matricule,
+            registeredAt: Date.now()
+          };
+
+          accounts.push(newUser);
+          saveAccounts(accounts);
+          saveSession(newUser);
+
+          // Bonus +200 Gold upon registration!
+          playerData.gold += 200;
+          saveData(playerData);
+
+          sound.playCoin();
+          showNotification(`Bienvenue ${username}! Permis ${matricule} délivré (+200 🪙) !`);
+          triggerFlavorToast(`مبروك ${username}! الرتب 6+ مفتوحة!`);
+
+          closeAuthModal();
+          updateAuthUI();
+          if (document.getElementById('shop-modal').style.display === 'flex') {
+            renderShopUI();
+          }
+        });
+
+        // Login submission
+        formLogin.addEventListener('submit', (e) => {
+          e.preventDefault();
+          const username = document.getElementById('login-username').value.trim();
+          const password = document.getElementById('login-password').value;
+
+          const accounts = loadAccounts();
+          const user = accounts.find(
+            (a) =>
+              (a.username.toLowerCase() === username.toLowerCase() ||
+                a.matricule.toLowerCase() === username.toLowerCase()) &&
+              a.password === password
+          );
+
+          if (!user) {
+            authAlert.innerText = 'Identifiant ou mot de passe incorrect.';
+            authAlert.style.display = 'block';
+            return;
+          }
+
+          saveSession(user);
+          sound.playCoin();
+          showNotification(`Bon retour, Chauffeur ${user.username} !`);
+          triggerFlavorToast(`أهلا بيك يا ${user.username}!`);
+
+          closeAuthModal();
+          updateAuthUI();
+          if (document.getElementById('shop-modal').style.display === 'flex') {
+            renderShopUI();
+          }
+        });
+
+        document.getElementById('btn-close-auth').addEventListener('click', closeAuthModal);
+        document.getElementById('btn-open-auth-main').addEventListener('click', openAuthModal);
+        document.getElementById('hud-driver-rank-badge').addEventListener('click', openGarage);
+        document.getElementById('start-driver-status-badge').addEventListener('click', openAuthModal);
+
+        const btnGameoverUnlock = document.getElementById('btn-gameover-unlock-rank');
+        if (btnGameoverUnlock) {
+          btnGameoverUnlock.addEventListener('click', () => {
+            document.getElementById('game-over-modal').style.display = 'none';
+            openAuthModal();
+          });
+        }
+
+        // Open & Close Garage
+        function openGarage() {
+          renderShopUI();
+          document.getElementById('start-menu').style.display = 'none';
+          document.getElementById('game-over-modal').style.display = 'none';
+          document.getElementById('auth-modal').style.display = 'none';
+          document.getElementById('shop-modal').style.display = 'flex';
+          gameState = 'GARAGE';
+        }
+
+        function closeGarage() {
+          document.getElementById('shop-modal').style.display = 'none';
+          document.getElementById('start-menu').style.display = 'flex';
+          gameState = 'MENU';
+          updateAuthUI();
+        }
+
+        // Attach Game Over & Menu Button Listeners
+        const btnRestartGame = document.getElementById('btn-restart-game');
+        if (btnRestartGame) {
+          btnRestartGame.addEventListener('click', () => {
+            document.getElementById('game-over-modal').style.display = 'none';
+            startGame();
+          });
+        }
+
+        const btnGameOverGarage = document.getElementById('btn-gameover-garage');
+        if (btnGameOverGarage) {
+          btnGameOverGarage.addEventListener('click', () => {
+            document.getElementById('game-over-modal').style.display = 'none';
+            openGarage();
+          });
+        }
+
+        const btnStartGame = document.getElementById('btn-start-game');
+        if (btnStartGame) {
+          btnStartGame.addEventListener('click', startGame);
+        }
+
+        const btnOpenGarage = document.getElementById('btn-open-garage');
+        if (btnOpenGarage) {
+          btnOpenGarage.addEventListener('click', openGarage);
+        }
+
+        const btnCloseShop = document.getElementById('btn-close-shop');
+        if (btnCloseShop) {
+          btnCloseShop.addEventListener('click', closeGarage);
+        }
+
+        // --- 15. DYNAMIC LEADERBOARD SYSTEM (LOCAL STORAGE & SUPABASE READY) ---
+        const LEADERBOARD_STORAGE_KEY = 'taxijama3i_leaderboard_v1';
+
+        function escapeHtml(str) {
+          if (!str) return '';
+          return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+        }
+
+        // Backend Adapter Service: Handles dynamic local high scores with ready-to-use Supabase hooks
+        const LeaderboardService = {
+          // Future Supabase credentials hook:
+          // In production, insert:
+          // supabaseUrl: 'https://xyzcompany.supabase.co',
+          // supabaseKey: 'public-anon-key',
+          supabaseUrl: null,
+          supabaseKey: null,
+          supabaseClient: null,
+
+          init() {
+            if (this.supabaseUrl && this.supabaseKey && window.supabase) {
+              try {
+                this.supabaseClient = window.supabase.createClient(this.supabaseUrl, this.supabaseKey);
+              } catch (e) {
+                console.warn('Supabase initialization failed:', e);
+              }
+            }
+          },
+
+          // Fetch real scores dynamically
+          async fetchTopScores(limit = 100) {
+            // 1. Remote Supabase Database integration (if configured)
+            if (this.supabaseClient) {
+              try {
+                const { data, error } = await this.supabaseClient
+                  .from('koursa_leaderboard')
+                  .select('id, username, station, score, level, rank_title, created_at')
+                  .order('score', { ascending: false })
+                  .limit(limit);
+
+                if (!error && Array.isArray(data)) {
+                  const currentUsername = currentUser ? currentUser.username.toLowerCase() : 'chauffeur local';
+                  return data.map((row) => ({
+                    id: row.id,
+                    username: row.username,
+                    station: row.station || 'Station Bab Alioua (Tunis)',
+                    score: Number(row.score) || 0,
+                    level: row.level || 10,
+                    rankTitle: row.rank_title || 'Légende Vivante',
+                    isUser: row.username.toLowerCase() === currentUsername
+                  }));
+                }
+              } catch (remoteErr) {
+                console.warn('Remote database fetch error, falling back to local registry:', remoteErr);
+              }
+            }
+
+            // 2. Dynamic Local Storage System:
+            // Reads real player records recorded from actual game runs & accounts
+            try {
+              const raw = localStorage.getItem(LEADERBOARD_STORAGE_KEY);
+              let list = raw ? JSON.parse(raw) : [];
+
+              // Sync current player's personal record from playerData if it exists
+              const currentRank = getCurrentRank(playerData.xp);
+              const userScore = Math.floor(playerData.highScore || 0);
+
+              if (userScore > 0) {
+                const userName = currentUser ? currentUser.username : 'Chauffeur Local';
+                const userStation = currentUser ? currentUser.region : 'Station Bab Alioua (Tunis)';
+                const userMatricule = currentUser ? currentUser.matricule : 'TN-LOCAL';
+
+                const existingIndex = list.findIndex(
+                  (entry) =>
+                    entry.username.toLowerCase() === userName.toLowerCase() ||
+                    (currentUser && entry.matricule === currentUser.matricule)
+                );
+
+                if (existingIndex >= 0) {
+                  if (userScore > list[existingIndex].score) {
+                    list[existingIndex].score = userScore;
+                    list[existingIndex].level = currentRank.level;
+                    list[existingIndex].rankTitle = currentRank.title;
+                    list[existingIndex].station = userStation;
+                    list[existingIndex].updatedAt = Date.now();
+                  }
+                } else {
+                  list.push({
+                    id: 'score_' + Date.now(),
+                    username: userName,
+                    matricule: userMatricule,
+                    station: userStation,
+                    score: userScore,
+                    level: currentRank.level,
+                    rankTitle: currentRank.title,
+                    updatedAt: Date.now()
+                  });
+                }
+              }
+
+              // Filter out invalid/zero scores
+              list = list.filter((item) => typeof item.score === 'number' && item.score > 0);
+
+              // Mark current user
+              const activeName = currentUser ? currentUser.username.toLowerCase() : 'chauffeur local';
+              list.forEach((item) => {
+                item.isUser = item.username.toLowerCase() === activeName;
+              });
+
+              // Sort descending by score
+              list.sort((a, b) => b.score - a.score);
+
+              // Save synchronized local data
+              localStorage.setItem(LEADERBOARD_STORAGE_KEY, JSON.stringify(list));
+
+              return list.slice(0, limit);
+            } catch (err) {
+              console.warn('Local leaderboard fetch error:', err);
+              return [];
+            }
+          },
+
+          // Record a new high score run
+          async recordScore(newScore, details = {}) {
+            const validScore = Math.floor(newScore || 0);
+            if (validScore <= 0) return;
+
+            const currentRank = getCurrentRank(playerData.xp);
+            const userName = currentUser ? currentUser.username : 'Chauffeur Local';
+            const userStation = currentUser ? currentUser.region : 'Station Bab Alioua (Tunis)';
+            const userMatricule = currentUser ? currentUser.matricule : 'TN-LOCAL';
+
+            // 1. Persist to local registry
+            try {
+              const raw = localStorage.getItem(LEADERBOARD_STORAGE_KEY);
+              let list = raw ? JSON.parse(raw) : [];
+
+              const existingIndex = list.findIndex(
+                (entry) =>
+                  entry.username.toLowerCase() === userName.toLowerCase() ||
+                  (currentUser && entry.matricule === currentUser.matricule)
+              );
+
+              if (existingIndex >= 0) {
+                if (validScore > list[existingIndex].score) {
+                  list[existingIndex].score = validScore;
+                  list[existingIndex].level = currentRank.level;
+                  list[existingIndex].rankTitle = currentRank.title;
+                  list[existingIndex].station = userStation;
+                  list[existingIndex].updatedAt = Date.now();
+                }
+              } else {
+                list.push({
+                  id: 'score_' + Date.now(),
+                  username: userName,
+                  matricule: userMatricule,
+                  station: userStation,
+                  score: validScore,
+                  level: currentRank.level,
+                  rankTitle: currentRank.title,
+                  updatedAt: Date.now()
+                });
+              }
+
+              list.sort((a, b) => b.score - a.score);
+              localStorage.setItem(LEADERBOARD_STORAGE_KEY, JSON.stringify(list));
+            } catch (err) {
+              console.warn('Failed to record score locally:', err);
+            }
+
+            // 2. Sync to Supabase if connected
+            if (this.supabaseClient) {
+              try {
+                await this.supabaseClient.from('koursa_leaderboard').upsert({
+                  username: userName,
+                  station: userStation,
+                  score: validScore,
+                  level: currentRank.level,
+                  rank_title: currentRank.title,
+                  updated_at: new Date().toISOString()
+                }, { onConflict: 'username' });
+              } catch (supabaseSaveErr) {
+                console.warn('Failed to upsert to Supabase:', supabaseSaveErr);
+              }
+            }
+          },
+
+          // Reset local records for testing empty state
+          clearLocalScores() {
+            try {
+              localStorage.removeItem(LEADERBOARD_STORAGE_KEY);
+              playerData.highScore = 0;
+              saveData(playerData);
+            } catch (e) {}
+          }
+        };
+
+        // Render dynamic table or clean empty-state message
+        async function renderLeaderboardTable() {
+          const tbody = document.getElementById('leaderboard-table-body');
+          const emptyState = document.getElementById('leaderboard-empty-state');
+          const tableContainer = document.getElementById('leaderboard-table-container');
+          if (!tbody) return;
+
+          tbody.innerHTML = '';
+
+          const scores = await LeaderboardService.fetchTopScores(100);
+
+          // Requirement: If there are no real scores recorded yet, display the clean empty-state message
+          if (!scores || scores.length === 0) {
+            if (emptyState) emptyState.style.display = 'block';
+            if (tableContainer) tableContainer.style.display = 'none';
+            return;
+          }
+
+          // Real scores exist: Show table and hide empty-state
+          if (emptyState) emptyState.style.display = 'none';
+          if (tableContainer) tableContainer.style.display = 'block';
+
+          scores.forEach((item, index) => {
+            const rankNum = index + 1;
+            const row = document.createElement('tr');
+            row.style.borderBottom = '1px solid rgba(255, 255, 255, 0.06)';
+            
+            if (item.isUser) {
+              row.style.background = 'rgba(245, 158, 11, 0.22)';
+              row.style.border = '1px solid #f59e0b';
+              row.style.fontWeight = '800';
+            } else {
+              row.style.background = rankNum % 2 === 0 ? 'rgba(255, 255, 255, 0.02)' : 'transparent';
+            }
+
+            let rankBadge = `#${rankNum}`;
+            if (rankNum === 1) rankBadge = '🥇 #1';
+            else if (rankNum === 2) rankBadge = '🥈 #2';
+            else if (rankNum === 3) rankBadge = '🥉 #3';
+
+            row.innerHTML = `
+              <td style="padding: 10px 14px; font-weight: 800; color: ${rankNum <= 3 ? '#facc15' : item.isUser ? '#38bdf8' : '#cbd5e1'};">
+                ${rankBadge}
+              </td>
+              <td style="padding: 10px 14px; font-weight: 700; color: ${item.isUser ? '#fef08a' : '#f8fafc'};">
+                ${item.isUser ? '⭐ ' : ''}${escapeHtml(item.username)} ${item.isUser ? '<span style="font-size: 11px; color: #f59e0b; margin-left: 4px;">(VOUS)</span>' : ''}
+              </td>
+              <td style="padding: 10px 14px; color: #94a3b8; font-size: 12px;">
+                ${escapeHtml(item.station)}
+              </td>
+              <td style="padding: 10px 14px; text-align: right; font-weight: 800; color: #38bdf8; font-variant-numeric: tabular-nums;">
+                ${Math.floor(item.score).toLocaleString()} 🎫
+              </td>
+            `;
+            tbody.appendChild(row);
+          });
+        }
+
+        async function openLeaderboard() {
+          const currentRank = getCurrentRank(playerData.xp);
+          const isLevel10 = currentRank.level >= 10;
+
+          document.getElementById('start-menu').style.display = 'none';
+          document.getElementById('shop-modal').style.display = 'none';
+          document.getElementById('game-over-modal').style.display = 'none';
+          document.getElementById('auth-modal').style.display = 'none';
+
+          const lockedView = document.getElementById('leaderboard-locked-view');
+          const unlockedView = document.getElementById('leaderboard-unlocked-view');
+
+          if (!isLevel10) {
+            // Locked State (< Level 10)
+            lockedView.style.display = 'block';
+            unlockedView.style.display = 'none';
+
+            document.getElementById('lb-lock-current-rank').innerText = `Niveau Actuel: Lvl ${currentRank.level} (${currentRank.title})`;
+            document.getElementById('lb-lock-xp-text').innerText = `${playerData.xp.toLocaleString()} / 23,000 XP`;
+
+            const pct = Math.min((playerData.xp / 23000) * 100, 100);
+            document.getElementById('lb-lock-progress-fill').style.width = `${Math.max(pct, 4)}%`;
+          } else {
+            // Unlocked State (Level 10 reached!)
+            lockedView.style.display = 'none';
+            unlockedView.style.display = 'flex';
+
+            document.getElementById('lb-user-high-score').innerText = `${Math.floor(playerData.highScore || 0).toLocaleString()} Koursa`;
+            if (currentUser) {
+              document.getElementById('lb-user-status-text').innerText = `Chauffeur ${currentUser.username} (${currentUser.region}) qualifié dans le Panthéon !`;
+            } else {
+              document.getElementById('lb-user-status-text').innerText = `Qualifié dans l'élite mondiale des routes de Tunis !`;
+            }
+
+            await renderLeaderboardTable();
+          }
+
+          document.getElementById('leaderboard-modal').style.display = 'flex';
+          gameState = 'MENU';
+        }
+
+        function closeLeaderboard() {
+          document.getElementById('leaderboard-modal').style.display = 'none';
+          document.getElementById('start-menu').style.display = 'flex';
+          updateAuthUI();
+        }
+
+        // Leaderboard Event Listeners
+        const btnOpenLbStart = document.getElementById('btn-open-leaderboard-start');
+        if (btnOpenLbStart) btnOpenLbStart.addEventListener('click', openLeaderboard);
+
+        const btnOpenLbGarage = document.getElementById('btn-open-leaderboard-garage');
+        if (btnOpenLbGarage) btnOpenLbGarage.addEventListener('click', openLeaderboard);
+
+        const btnCloseLb = document.getElementById('btn-close-leaderboard');
+        if (btnCloseLb) btnCloseLb.addEventListener('click', closeLeaderboard);
+
+        const btnLbLockPlay = document.getElementById('btn-lb-lock-play');
+        if (btnLbLockPlay) {
+          btnLbLockPlay.addEventListener('click', () => {
+            closeLeaderboard();
+            startGame();
+          });
+        }
+
+        const btnLbEmptyPlay = document.getElementById('btn-lb-empty-play');
+        if (btnLbEmptyPlay) {
+          btnLbEmptyPlay.addEventListener('click', () => {
+            closeLeaderboard();
+            startGame();
+          });
+        }
+
+        // Level 10 Test Toggle (Allows instant verification of Level 10 lock/unlock)
+        const btnLbTestUnlock = document.getElementById('btn-lb-test-unlock');
+        if (btnLbTestUnlock) {
+          btnLbTestUnlock.addEventListener('click', () => {
+            // Elevate player to Level 10
+            playerData.xp = 23500;
+            if (!currentUser) {
+              currentUser = {
+                username: 'Chiffour_Legende',
+                region: 'Station Bab Alioua (Tunis)',
+                matricule: 'TN-1000'
+              };
+              saveSession(currentUser);
+            }
+            saveData(playerData);
+            sound.playCoin();
+            showNotification('🌟 Test Mode: Niveau 10 (Légende Vivante) activé !');
+            openLeaderboard();
+          });
+        }
+
+        // --- 16. BOOTSTRAP ---
+        LeaderboardService.init();
+        initScene();
+        updateAuthUI();
+        requestAnimationFrame(animate);
+
+        setTimeout(() => {
+          triggerFlavorToast('مرحبا بيك في تاكسي جماعي 3D!');
+        }, 600);
+      })();
+    </script>
+  </body>
+</html>

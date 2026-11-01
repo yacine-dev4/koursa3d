@@ -1,0 +1,6 @@
+{
+  "name": "Taxi Jama3i 3D: Tunisian Street",
+  "description": "3D arcade endless driving game set on the streets of Tunisia. Dodge potholes, pick up passengers, earn Kiraa and Gold, and tune your Taxi Jama3i van in the garage!",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
