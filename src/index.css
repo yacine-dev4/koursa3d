@@ -1,1 +1,287 @@
-@import "tailwindcss";
+import { type FormEvent, useEffect, useState } from 'react';
+import { supabase } from './lib/supabase';
+
+type LeaderboardRow = {
+  username: string;
+  score: number;
+};
+
+export default function App() {
+  const [mode, setMode] = useState<'login' | 'signup'>('signup');
+  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [scoreInput, setScoreInput] = useState('0');
+  const [leaderboard, setLeaderboard] = useState<LeaderboardRow[]>([]);
+  const [status, setStatus] = useState('Add your Supabase credentials to enable login and leaderboard features.');
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [isBusy, setIsBusy] = useState(false);
+
+  const isConfigured = Boolean(supabase);
+
+  async function loadLeaderboard() {
+    if (!supabase) return;
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('username, score')
+      .order('score', { ascending: false })
+      .limit(100);
+
+    if (error) {
+      setStatus(`Leaderboard error: ${error.message}`);
+      return;
+    }
+
+    setLeaderboard((data ?? []) as LeaderboardRow[]);
+  }
+
+  useEffect(() => {
+    if (!supabase) return;
+
+    void loadLeaderboard();
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUserEmail(session?.user?.email ?? null);
+    });
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUserEmail(session?.user?.email ?? null);
+      if (session) {
+        void loadLeaderboard();
+      }
+    });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!supabase) {
+      setStatus('Your Supabase credentials are missing. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
+      return;
+    }
+
+    if (!email || !password || (mode === 'signup' && !username.trim())) {
+      setStatus('Please fill in all required fields.');
+      return;
+    }
+
+    setIsBusy(true);
+
+    try {
+      if (mode === 'signup') {
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+        });
+
+        if (error) throw error;
+
+        if (data.user) {
+          const { error: profileError } = await supabase.from('profiles').upsert(
+            {
+              id: data.user.id,
+              username: username.trim(),
+              email,
+              score: 0,
+            },
+            { onConflict: 'id' },
+          );
+
+          if (profileError) throw profileError;
+        }
+
+        setStatus('Account created. Check your email to confirm the signup if email confirmation is enabled.');
+      } else {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (error) throw error;
+
+        setUserEmail(data.user?.email ?? email);
+        setStatus('Login successful.');
+      }
+
+      setUsername('');
+      setEmail('');
+      setPassword('');
+      await loadLeaderboard();
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Authentication failed.';
+      setStatus(message);
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
+  async function handleSaveScore() {
+    if (!supabase) {
+      setStatus('Supabase is not configured yet.');
+      return;
+    }
+
+    if (!userEmail) {
+      setStatus('Log in first to save your score.');
+      return;
+    }
+
+    const nextScore = Number(scoreInput) || 0;
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ score: nextScore })
+      .eq('email', userEmail);
+
+    if (error) {
+      setStatus(`Could not save score: ${error.message}`);
+      return;
+    }
+
+    setStatus('Score saved successfully.');
+    await loadLeaderboard();
+  }
+
+  async function handleLogout() {
+    if (!supabase) return;
+
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      setStatus(`Logout failed: ${error.message}`);
+      return;
+    }
+
+    setUserEmail(null);
+    setStatus('You are logged out.');
+  }
+
+  return (
+    <main className="app-shell">
+      <section className="panel auth-panel">
+        <div className="panel-header">
+          <div>
+            <p className="eyebrow">Taxi Jama3i</p>
+            <h1>Player accounts</h1>
+          </div>
+          {userEmail ? (
+            <button className="secondary-btn" onClick={handleLogout} type="button">
+              Logout
+            </button>
+          ) : null}
+        </div>
+
+        {!isConfigured ? (
+          <div className="notice warning">
+            Supabase is not configured yet. Add your project URL and anon key to the environment file.
+          </div>
+        ) : null}
+
+        <form onSubmit={handleSubmit} className="auth-form">
+          <div className="mode-toggle" role="tablist" aria-label="Authentication mode">
+            <button
+              type="button"
+              className={mode === 'signup' ? 'tab active' : 'tab'}
+              onClick={() => setMode('signup')}
+            >
+              Sign up
+            </button>
+            <button
+              type="button"
+              className={mode === 'login' ? 'tab active' : 'tab'}
+              onClick={() => setMode('login')}
+            >
+              Login
+            </button>
+          </div>
+
+          {mode === 'signup' ? (
+            <label>
+              Username
+              <input
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
+                placeholder="player123"
+              />
+            </label>
+          ) : null}
+
+          <label>
+            Email
+            <input
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="you@example.com"
+            />
+          </label>
+
+          <label>
+            Password
+            <input
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder="••••••••"
+            />
+          </label>
+
+          <button className="primary-btn" disabled={isBusy || !isConfigured} type="submit">
+            {isBusy ? 'Working...' : mode === 'signup' ? 'Create account' : 'Login'}
+          </button>
+        </form>
+
+        {userEmail ? (
+          <div className="score-box">
+            <div>
+              <p className="label">Logged in as</p>
+              <strong>{userEmail}</strong>
+            </div>
+
+            <div className="score-input-row">
+              <input
+                type="number"
+                min="0"
+                value={scoreInput}
+                onChange={(event) => setScoreInput(event.target.value)}
+                placeholder="Score"
+              />
+              <button className="primary-btn" onClick={handleSaveScore} type="button">
+                Save score
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        <div className="status-box">{status}</div>
+      </section>
+
+      <section className="panel leaderboard-panel">
+        <div className="panel-header">
+          <div>
+            <p className="eyebrow">Ranking</p>
+            <h2>Top 100 leaderboard</h2>
+          </div>
+        </div>
+
+        <div className="leaderboard-list">
+          {leaderboard.length === 0 ? (
+            <div className="empty-state">No scores yet. Sign up and save your first score.</div>
+          ) : (
+            leaderboard.map((entry, index) => (
+              <div key={`${entry.username}-${index}`} className="leaderboard-row">
+                <span className="rank">#{index + 1}</span>
+                <span className="name">{entry.username}</span>
+                <span className="score">{entry.score}</span>
+              </div>
+            ))
+          )}
+        </div>
+      </section>
+    </main>
+  );
+}
